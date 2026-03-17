@@ -5,6 +5,7 @@ import pandas as pd
 
 from helpers.usgs_waterdata_demo import DEMO_CONFIG, LEGACY_CALLS, NOTEBOOK_MAPPING_ROWS
 from helpers.usgs_waterdata_demo import get_usgs_stations_in_bbox
+from helpers.usgs_waterdata_demo import export_timeseries_artifacts, get_usgs_timeseries
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,3 +145,101 @@ def test_station_discovery_returns_empty_frame_when_no_candidates_match(monkeypa
 
     assert result["discharge"].empty
     assert "workflow_type" in result["discharge"].columns
+
+
+def test_timeseries_routes_expected_service_calls_and_returns_contract(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_daily(**kwargs):
+        calls.append(("daily", kwargs))
+        return pd.DataFrame([{"value": 1.0, "observation_time": "2020-01-01"}]), {
+            "source": "daily"
+        }
+
+    def fake_field_measurements(**kwargs):
+        calls.append(("field", kwargs))
+        return pd.DataFrame([{"value": 2.0, "observation_time": "2020-01-02"}]), {
+            "source": "field"
+        }
+
+    monkeypatch.setattr("helpers.usgs_waterdata_demo.wd.get_daily", fake_daily)
+    monkeypatch.setattr(
+        "helpers.usgs_waterdata_demo.wd.get_field_measurements",
+        fake_field_measurements,
+    )
+
+    discharge_payload = get_usgs_timeseries("02225500", "discharge", tmp_path)
+    gw_daily_payload = get_usgs_timeseries(
+        "324209082430201",
+        "gw_daily",
+        tmp_path,
+        parameter_code="72019",
+    )
+    gw_periodic_payload = get_usgs_timeseries(
+        "410947071344803",
+        "gw_periodic",
+        tmp_path,
+        parameter_code="72019",
+    )
+
+    assert [name for name, _ in calls] == ["daily", "daily", "field"]
+    assert calls[0][1]["parameter_code"] == "00060"
+    assert calls[1][1]["parameter_code"] == "72019"
+    assert calls[0][1]["start"] == "1880-01-01"
+    assert calls[0][1]["end"] == "2100-01-01"
+    assert discharge_payload["records"][0]["workflow_type"] == "discharge"
+    assert gw_daily_payload["records"][0]["workflow_type"] == "gw_daily"
+    assert gw_periodic_payload["records"][0]["workflow_type"] == "gw_periodic"
+    assert {"frame", "records", "files", "metadata"} <= set(discharge_payload)
+
+
+def test_export_writes_json_and_csv_and_tracks_parquet(tmp_path):
+    frame = pd.DataFrame([{"station_id": "A", "workflow_type": "discharge", "value": 1.0}])
+
+    file_paths = export_timeseries_artifacts(frame, tmp_path, "discharge", "A")
+
+    assert file_paths["json"].exists()
+    assert file_paths["csv"].exists()
+    assert "parquet" in file_paths
+    loaded = json.loads(file_paths["json"].read_text())
+    assert loaded[0]["station_id"] == "A"
+
+
+def test_export_keeps_json_and_csv_when_parquet_is_unavailable(monkeypatch, tmp_path):
+    frame = pd.DataFrame([{"station_id": "A", "workflow_type": "discharge", "value": 1.0}])
+
+    def fake_to_parquet(*args, **kwargs):
+        raise ImportError("Missing optional dependency 'pyarrow'")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_to_parquet)
+
+    file_paths = export_timeseries_artifacts(frame, tmp_path, "discharge", "A")
+
+    assert file_paths["json"].exists()
+    assert file_paths["csv"].exists()
+    assert file_paths["parquet"] is None
+    assert "pyarrow" in file_paths["parquet_error"]
+
+
+def test_export_uses_deterministic_filenames(tmp_path):
+    frame = pd.DataFrame([{"station_id": "A", "workflow_type": "discharge", "value": 1.0}])
+
+    file_paths = export_timeseries_artifacts(frame, tmp_path, "discharge", "A")
+
+    assert file_paths["json"].name == "discharge_A.json"
+    assert file_paths["csv"].name == "discharge_A.csv"
+
+
+def test_timeseries_returns_empty_frame_contract_when_service_has_no_rows(
+    monkeypatch, tmp_path
+):
+    def fake_daily(**kwargs):
+        return pd.DataFrame(columns=["value"]), {"source": "daily"}
+
+    monkeypatch.setattr("helpers.usgs_waterdata_demo.wd.get_daily", fake_daily)
+
+    payload = get_usgs_timeseries("02225500", "discharge", tmp_path)
+
+    assert payload["frame"].empty
+    assert payload["records"] == []
+    assert payload["metadata"]["source"] == "daily"
