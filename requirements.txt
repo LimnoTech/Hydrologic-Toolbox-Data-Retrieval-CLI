@@ -1,0 +1,4 @@
+dataretrieval
+pandas
+pytest
+jupyter
