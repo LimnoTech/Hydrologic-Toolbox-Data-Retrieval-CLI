@@ -8,6 +8,7 @@ try:
     from dataretrieval import waterdata as wd
 except ImportError:  # pragma: no cover - monkeypatched in tests
     wd = SimpleNamespace(
+        get_daily=None,
         get_monitoring_locations=None,
         get_time_series_metadata=None,
         get_field_measurements=None,
@@ -142,3 +143,68 @@ def get_usgs_stations_in_bbox(bbox, data_types):
         "gw_periodic": _get_groundwater_periodic_stations,
     }
     return {workflow_type: handlers[workflow_type](bbox) for workflow_type in data_types}
+
+
+def export_timeseries_artifacts(frame, output_dir, workflow_type, station_id):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / f"{workflow_type}_{station_id}.json"
+    csv_path = output_dir / f"{workflow_type}_{station_id}.csv"
+    parquet_path = output_dir / f"{workflow_type}_{station_id}.parquet"
+
+    frame.to_json(json_path, orient="records", indent=2)
+    frame.to_csv(csv_path, index=False)
+
+    file_paths = {
+        "json": json_path,
+        "csv": csv_path,
+        "parquet": parquet_path,
+        "parquet_error": None,
+    }
+    try:
+        frame.to_parquet(parquet_path, index=False)
+    except Exception as exc:  # pragma: no cover - depends on parquet engine availability
+        file_paths["parquet"] = None
+        file_paths["parquet_error"] = str(exc)
+
+    return file_paths
+
+
+def get_usgs_timeseries(
+    station_id,
+    workflow_type,
+    output_dir,
+    parameter_code=None,
+    date_range=("1880-01-01", "2100-01-01"),
+):
+    if workflow_type in {"discharge", "gw_daily"}:
+        frame, metadata = wd.get_daily(
+            monitoring_location_id=station_id,
+            parameter_code="00060" if workflow_type == "discharge" else parameter_code,
+            start=date_range[0],
+            end=date_range[1],
+        )
+    elif workflow_type == "gw_periodic":
+        frame, metadata = wd.get_field_measurements(
+            monitoring_location_id=station_id,
+            parameter_code=parameter_code,
+            start=date_range[0],
+            end=date_range[1],
+        )
+    else:
+        raise ValueError(f"Unsupported workflow type: {workflow_type}")
+
+    frame = frame.reset_index(drop=True).copy()
+    frame["station_id"] = station_id
+    frame["workflow_type"] = workflow_type
+
+    if frame.empty:
+        return {
+            "frame": frame,
+            "records": [],
+            "files": {},
+            "metadata": {**metadata, "warning": f"No records returned for {workflow_type} {station_id}"},
+        }
+
+    records = frame.to_dict(orient="records")
+    file_paths = export_timeseries_artifacts(frame, output_dir, workflow_type, station_id)
+    return {"frame": frame, "records": records, "files": file_paths, "metadata": metadata}
