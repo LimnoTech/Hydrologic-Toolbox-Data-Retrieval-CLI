@@ -1,5 +1,18 @@
 """Helper module for the USGS Water Data demo notebook."""
 
+from types import SimpleNamespace
+
+import pandas as pd
+
+try:
+    from dataretrieval import waterdata as wd
+except ImportError:  # pragma: no cover - monkeypatched in tests
+    wd = SimpleNamespace(
+        get_monitoring_locations=None,
+        get_time_series_metadata=None,
+        get_field_measurements=None,
+    )
+
 
 DEMO_CONFIG = {
     "bbox": (-82.859, 31.899, -82.013, 32.947),
@@ -80,3 +93,52 @@ NOTEBOOK_MAPPING_ROWS = [
         "expected_output_shape": "normalized DataFrame + records + files",
     },
 ]
+
+
+def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
+    candidate_ids = set(candidate_frame["monitoring_location_id"])
+    qualifying_ids = set(qualifying_frame["monitoring_location_id"])
+    frame = candidate_frame[
+        candidate_frame["monitoring_location_id"].isin(candidate_ids & qualifying_ids)
+    ].copy()
+    frame["workflow_type"] = workflow_type
+    frame = frame.drop_duplicates(subset=["monitoring_location_id"])
+    frame = frame.sort_values("monitoring_location_id").reset_index(drop=True)
+
+    if frame.empty and "workflow_type" not in frame.columns:
+        frame["workflow_type"] = pd.Series(dtype="object")
+
+    return frame
+
+
+def _get_discharge_stations(bbox):
+    candidate_frame, _ = wd.get_monitoring_locations(bBox=bbox, site_type_code="ST")
+    qualifying_frame, _ = wd.get_time_series_metadata(
+        bBox=bbox,
+        parameter_code="00060",
+    )
+    return _normalize_station_frame(candidate_frame, qualifying_frame, "discharge")
+
+
+def _get_groundwater_daily_stations(bbox):
+    candidate_frame, _ = wd.get_monitoring_locations(bBox=bbox, site_type_code="GW")
+    qualifying_frame, _ = wd.get_time_series_metadata(
+        bBox=bbox,
+        site_type_code="GW",
+    )
+    return _normalize_station_frame(candidate_frame, qualifying_frame, "gw_daily")
+
+
+def _get_groundwater_periodic_stations(bbox):
+    candidate_frame, _ = wd.get_monitoring_locations(bBox=bbox, site_type_code="GW")
+    qualifying_frame, _ = wd.get_field_measurements(bBox=bbox)
+    return _normalize_station_frame(candidate_frame, qualifying_frame, "gw_periodic")
+
+
+def get_usgs_stations_in_bbox(bbox, data_types):
+    handlers = {
+        "discharge": _get_discharge_stations,
+        "gw_daily": _get_groundwater_daily_stations,
+        "gw_periodic": _get_groundwater_periodic_stations,
+    }
+    return {workflow_type: handlers[workflow_type](bbox) for workflow_type in data_types}
