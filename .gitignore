@@ -2,7 +2,6 @@ docs/*
 __pycache__/
 *.pyc
 tests/
-!tests/
+
 tests/*
-!tests/test_usgs_waterdata_demo.py
 .pytest_cache/
