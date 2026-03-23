@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waterdata-toolbox-demo"
+version = "0.1.0"
+description = "Sidecar package for the Water Data ToolBox demo workflows."
+readme = "docs/waterdata-package-cli-gui.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dataretrieval",
+    "pandas",
+    "geopandas",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller"]
+
+[project.scripts]
+waterdata-toolbox-demo = "waterdata_toolbox_demo.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
