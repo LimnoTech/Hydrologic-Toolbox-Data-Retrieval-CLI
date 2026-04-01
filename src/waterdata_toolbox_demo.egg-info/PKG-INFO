@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: waterdata-toolbox-demo
+Version: 0.1.0
+Summary: Sidecar package for the Water Data ToolBox demo workflows.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: dataretrieval
+Requires-Dist: pandas
+Requires-Dist: geopandas
+Requires-Dist: pyarrow
+Provides-Extra: build
+Requires-Dist: pyinstaller; extra == "build"

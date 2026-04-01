@@ -52,13 +52,19 @@ Launch the small desktop GUI by running the module with no arguments:
 PYTHONPATH=src python -m waterdata_toolbox_demo
 ```
 
-## Windows exe build
+## Windows app build
 
-Build the `.exe` on Windows, not macOS. From a Windows environment with the project checked out:
+Build the packaged Windows app on Windows, not macOS. From a Windows environment with the project checked out:
 
 ```bash
 pip install -e .[build]
 pyinstaller waterdata_toolbox_demo.spec
 ```
 
-The resulting executable will be written under `dist/`. The shared app entrypoint uses CLI mode when arguments are present and opens the GUI when launched without arguments.
+The default build now emits an `onedir` app for faster startup instead of a single self-extracting `.exe`. Launch the packaged app from:
+
+```text
+dist/waterdata_toolbox_demo/waterdata_toolbox_demo.exe
+```
+
+The tradeoff is that distribution is now a folder-based app rather than one standalone file. The shared app entrypoint still uses CLI mode when arguments are present and opens the GUI when launched without arguments.

@@ -6,3 +6,4 @@ tests/
 tests/*
 .pytest_cache/
 outputs/*
+build/*
