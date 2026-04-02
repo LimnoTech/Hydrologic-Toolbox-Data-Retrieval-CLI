@@ -7,4 +7,3 @@ tests/*
 .pytest_cache/
 outputs/*
 build/*
-dist/waterdata_toolbox_demo/_internal
