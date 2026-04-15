@@ -1,0 +1,72 @@
+#
+#
+# US Geological Survey
+# retrieved: 2026-03-17 12:10:29 -04:00	(sdas01)
+#
+# The Site File stores location and general information about groundwater,
+# surface water, and meteorological sites
+# for sites in USA.
+#
+# File-format description:  http://help.waterdata.usgs.gov/faq/about-tab-delimited-output
+# Automated-retrieval info: http://waterservices.usgs.gov/rest/Site-Service.html
+#
+# Contact:   gs-w_support_nwisweb@usgs.gov
+# Warning: A site search criterion has been used for which the data may be unavailable.
+#
+# The following selected fields are included in this output:
+#
+#  agency_cd       -- Agency
+#  site_no         -- Site identification number
+#  station_nm      -- Site name
+#  site_tp_cd      -- Site type
+#  lat_va          -- DMS latitude
+#  long_va         -- DMS longitude
+#  dec_lat_va      -- Decimal latitude
+#  dec_long_va     -- Decimal longitude
+#  coord_meth_cd   -- Latitude-longitude method
+#  coord_acy_cd    -- Latitude-longitude accuracy
+#  coord_datum_cd  -- Latitude-longitude datum
+#  dec_coord_datum_cd -- Decimal Latitude-longitude datum
+#  district_cd     -- District code
+#  state_cd        -- State code
+#  county_cd       -- County code
+#  country_cd      -- Country code
+#  land_net_ds     -- Land net location description
+#  map_nm          -- Name of location map
+#  map_scale_fc    -- Scale of location map
+#  alt_va          -- Altitude of Gage/land surface
+#  alt_meth_cd     -- Method altitude determined
+#  alt_acy_va      -- Altitude accuracy
+#  alt_datum_cd    -- Altitude datum
+#  huc_cd          -- Hydrologic unit code
+#  basin_cd        -- Drainage basin code
+#  topo_cd         -- Topographic setting code
+#  instruments_cd  -- Flags for instruments at site
+#  construction_dt -- Date of first construction
+#  inventory_dt    -- Date site established or inventoried
+#  drain_area_va   -- Drainage area
+#  contrib_drain_area_va -- Contributing drainage area
+#  tz_cd           -- Time Zone abbreviation
+#  local_time_fg   -- Site honors Daylight Savings Time
+#  reliability_cd  -- Data reliability code
+#  gw_file_cd      -- Data-other GW files
+#  nat_aqfr_cd     -- National aquifer code
+#  aqfr_cd         -- Local aquifer code
+#  aqfr_type_cd    -- Local aquifer type code
+#  well_depth_va   -- Well depth
+#  hole_depth_va   -- Hole depth
+#  depth_src_cd    -- Source of depth data
+#  project_no      -- Project number
+#
+agency_cd	site_no	station_nm	site_tp_cd	lat_va	long_va	dec_lat_va	dec_long_va	coord_meth_cd	coord_acy_cd	coord_datum_cd	dec_coord_datum_cd	district_cd	state_cd	county_cd	country_cd	land_net_ds	map_nm	map_scale_fc	alt_va	alt_meth_cd	alt_acy_va	alt_datum_cd	huc_cd	basin_cd	topo_cd	instruments_cd	construction_dt	inventory_dt	drain_area_va	contrib_drain_area_va	tz_cd	local_time_fg	reliability_cd	gw_file_cd	nat_aqfr_cd	aqfr_cd	aqfr_type_cd	well_depth_va	hole_depth_va	depth_src_cd	project_no
+5s	15s	50s	7s	16s	16s	16s	16s	1s	1s	10s	10s	3s	2s	3s	2s	23s	20s	7s	8s	1s	3s	10s	16s	2s	1s	30s	8s	8s	8s	8s	6s	1s	1s	30s	10s	8s	1s	8s	8s	1s	12s
+USGS	02201230	OGEECHEE RIVER AT MIDVILLE, GA	ST	324852.9	0821406.0	32.81469444	-82.235	M	S	NAD83	NAD83	13	13	033	US		MIDVILLE		168.13	W	.18	NAVD88	03060201			YNNNYNNNNYNNNYNNNNNNNNNNNNNNNN			1340	1340	EST	Y		NNNNNNNN							OG-39A
+USGS	02215500	OCMULGEE RIVER AT LUMBER CITY, GA	ST	315511.7	0824026.6	31.91991667	-82.6740556	M	S	NAD83	NAD83	13	13	161	US		LUMBER CITY		86.93	X	.21	NAVD88	03070104			YNNNYNNNNYNNNYNNNNNNNNNNNNNNNN			5180	5180	EST	Y		NNNNNNNN							AL-206
+USGS	02215900	LITTLE OCMULGEE RIVER AT GA 149, AT SCOTLAND, GA	ST	320308.5	0824856.2	32.0523611	-82.8156111	N	1	NAD83	NAD83	13	13	271	US		SCOTLAND, GA	  24000	 126.5	F	 .1	NAVD88	03070105			NNNNYNNNNYNNNYNNNNNNNNNNNNNNNN			316		EST	Y		NNNNNNNN							
+USGS	02216000	LITTLE OCMULGEE RIVER AT TOWNS, GA	ST	320028	0824510	32.00795469	-82.752641	M	U	NAD27	NAD83	13	13	271	US		SCOTLAND, GA	  24000	 108.06	L	.01	NGVD29	03070105			NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN			351.00	351.00	EST	Y		NNNNNNNN							AL-209
+USGS	02216610	TILLMAN MILL CREEK NEAR LUMBER CITY, GA	ST	315853	0823832	31.98157128	-82.6420812	M	U	NAD27	NAD83	13	13	309	US		LUMBER CITY, GA	  24000	 170.00	M	  5	NGVD29	03070104			NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN			2.71	2.71	EST	Y		NNNNNNNN							
+USGS	02224500	OCONEE RIVER NEAR MOUNT VERNON, GA	ST	321127.3	0823751.7	32.19091667	-82.6310278	N	1	NAD83	NAD83	13	13	309	US		GLENWOOD, GA	  24000	 102.6	L	 .1	NAVD88	03070102			NNNNYNYNNNNNNYNNNNNNNNNNNNNNNN			5110.00		EST	Y		NNNNNNNN							
+USGS	02224940	ALTAMAHA RIVER AT US 221, NR CHARLOTTEVILLE, GA	ST	315728.3	0823101.3	31.9578611	-82.5170278	M	S	NAD83	NAD83	13	13	209	US		HAZLEHURST NORTH, GA	  24000	73.46	X	.22	NAVD88	03070106			NNNNYNNNNYNNNYNNNNNNNNNNNNNNNN			11400		EST	Y		NNNNNNNN							
+USGS	02225000	ALTAMAHA RIVER NEAR BAXLEY, GA	ST	315622.2	0822112.2	31.9395	-82.35338889	N	S	NAD83	NAD83	13	13	001	US		BAXLEY N.E.		 60.7	F	 .1	NAVD88	03070106			YNNNYNNNNNYNNYNNNNNNNNNNNNNNNN			11600	11600	EST	Y		NNNNNNNN							
+USGS	02225270	OHOOPEE RIVER AT GA 297, NEAR SWAINSBORO, GA	ST	322626.2	0822254.8	32.4406111	-82.38188889	M	S	NAD83	NAD83	13	13	107	US		COVENA		145.03	X	.24	NAVD88	03070107			NNNNYNYNNYNNNYNNNNNNNNNNNNNNNN			553		EST	Y		NNNNNNNN							AL-401B
+USGS	02225500	OHOOPEE RIVER NEAR REIDSVILLE, GA	ST	320437.7	0821035.4	32.07713889	-82.1765	N	1	NAD83	NAD83	13	13	267	US		REIDSVILLE WEST		 73.1	L	 .1	NAVD88	03070107			YNNNYNNNNNYNNYNNNNNNNNNNNNNNNN			1110	1110	EST	Y		NNNNNNNN							
