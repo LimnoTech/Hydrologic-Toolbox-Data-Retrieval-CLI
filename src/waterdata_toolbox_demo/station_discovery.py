@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import warnings
 
 import pandas as pd
+
+from waterdata_toolbox_demo.exports import (
+    dataframe_to_feature_collection,
+    export_combined_json_artifact,
+)
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
@@ -21,6 +27,18 @@ def _call_station_discovery_with_filtered_datetime_warning(function, **kwargs):
             category=UserWarning,
         )
         return function(**kwargs)
+
+
+def _utc_now_string():
+    """Return a compact UTC timestamp for artifact metadata."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _combined_payload_key(workflow_type):
+    """Return the qualifying raw payload key for a workflow export."""
+    if workflow_type == "gw_periodic":
+        return "field_measurements"
+    return "qualifying_timeseries_metadata"
 
 
 def _extract_decimal_coordinate(value, axis):
@@ -157,54 +175,110 @@ def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
     return _to_station_geodataframe(frame)
 
 
+def _get_station_discovery_frames(bbox, workflow_type, waterdata_module):
+    """Return candidate, qualifying, and normalized frames for one workflow."""
+    if workflow_type == "discharge":
+        candidate_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_monitoring_locations,
+            bbox=bbox,
+            site_type_code="ST",
+        )[0]
+        qualifying_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_time_series_metadata,
+            bbox=bbox,
+            parameter_code="00060",
+        )[0]
+    elif workflow_type == "gw_daily":
+        candidate_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_monitoring_locations,
+            bbox=bbox,
+            site_type_code="GW",
+        )[0]
+        qualifying_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_time_series_metadata,
+            bbox=bbox,
+        )[0]
+    elif workflow_type == "gw_periodic":
+        candidate_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_monitoring_locations,
+            bbox=bbox,
+            site_type_code="GW",
+        )[0]
+        qualifying_frame = _call_station_discovery_with_filtered_datetime_warning(
+            waterdata_module.get_field_measurements,
+            bbox=bbox,
+        )[0]
+    else:
+        raise ValueError(f"Unsupported workflow type: {workflow_type}")
+
+    normalized_frame = _normalize_station_frame(
+        candidate_frame,
+        qualifying_frame,
+        workflow_type,
+    )
+    return candidate_frame, qualifying_frame, normalized_frame
+
+
+def _filter_frame_to_ids(frame, matched_ids):
+    """Filter a frame to the matched monitoring location ids."""
+    if frame is None or "monitoring_location_id" not in frame.columns:
+        return frame
+    return frame[frame["monitoring_location_id"].isin(matched_ids)].copy().reset_index(drop=True)
+
+
 def get_usgs_stations_in_bbox(bbox, workflow_types, waterdata_module=None):
     """Return workflow-keyed station discovery frames for the legacy new-project step."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
-    handlers = {
-        "discharge": lambda: _normalize_station_frame(
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_monitoring_locations,
-                bbox=bbox,
-                site_type_code="ST",
-            )[0],
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_time_series_metadata,
-                bbox=bbox,
-                parameter_code="00060",
-            )[0],
-            "discharge",
-        ),
-        "gw_daily": lambda: _normalize_station_frame(
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_monitoring_locations,
-                bbox=bbox,
-                site_type_code="GW",
-            )[0],
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_time_series_metadata,
-                bbox=bbox,
-            )[0],
-            "gw_daily",
-        ),
-        "gw_periodic": lambda: _normalize_station_frame(
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_monitoring_locations,
-                bbox=bbox,
-                site_type_code="GW",
-            )[0],
-            _call_station_discovery_with_filtered_datetime_warning(
-                waterdata_module.get_field_measurements,
-                bbox=bbox,
-            )[0],
-            "gw_periodic",
-        ),
-    }
-
     results = {}
     for workflow_type in workflow_types:
-        if workflow_type not in handlers:
-            raise ValueError(f"Unsupported workflow type: {workflow_type}")
-        results[workflow_type] = handlers[workflow_type]()
+        results[workflow_type] = _get_station_discovery_frames(
+            bbox,
+            workflow_type,
+            waterdata_module,
+        )[2]
     return results
+
+
+def run_create_new_project_section(
+    bbox,
+    workflow_types,
+    output_dir,
+    waterdata_module=None,
+):
+    """Run create-project discovery and write one combined JSON file per workflow."""
+    if waterdata_module is None:
+        from dataretrieval import waterdata as waterdata_module
+
+    workflow_payloads = {}
+    for workflow_type in workflow_types:
+        candidate_frame, qualifying_frame, frame = _get_station_discovery_frames(
+            bbox,
+            workflow_type,
+            waterdata_module,
+        )
+        matched_ids = set(frame["monitoring_location_id"])
+        payload_key = _combined_payload_key(workflow_type)
+        combined_json_payload = {
+            "workflow_type": workflow_type,
+            "requested_at": _utc_now_string(),
+            "monitoring_locations": dataframe_to_feature_collection(
+                _filter_frame_to_ids(candidate_frame, matched_ids)
+            ),
+            payload_key: dataframe_to_feature_collection(
+                _filter_frame_to_ids(qualifying_frame, matched_ids),
+                geometry_enabled=False,
+            ),
+        }
+        json_path = export_combined_json_artifact(
+            combined_json_payload,
+            output_dir,
+            f"create_new_project_{workflow_type}",
+        )
+        workflow_payloads[workflow_type] = {
+            "frame": frame,
+            "files": {"json": json_path},
+            "artifact_messages": [str(json_path)],
+        }
+    return workflow_payloads

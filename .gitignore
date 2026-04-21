@@ -6,4 +6,6 @@ tests/
 tests/*
 .pytest_cache/
 outputs/*
-build/*
+build/*# pixi environments
+.pixi/*
+!.pixi/config.toml

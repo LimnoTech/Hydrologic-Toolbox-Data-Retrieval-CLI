@@ -52,6 +52,15 @@ Launch the small desktop GUI by running the module with no arguments:
 PYTHONPATH=src python -m waterdata_toolbox_demo
 ```
 
+## Artifact outputs
+
+- `add-data` writes:
+  - one combined USGS-style JSON artifact built from `dataretrieval` results
+  - one CSV export
+  - one parquet export when available
+- `create-new-project` writes one combined USGS-style JSON artifact per workflow run.
+- The JSON artifacts now wrap nested `FeatureCollection` blocks reconstructed from `dataretrieval` frames instead of flattening rows into a simple records array.
+
 ## Windows app build
 
 Build the packaged Windows app on Windows, not macOS. From a Windows environment with the project checked out:

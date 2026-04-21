@@ -7,7 +7,7 @@ from pathlib import Path
 
 from waterdata_toolbox_demo.config import DEMO_CONFIG
 from waterdata_toolbox_demo.exports import format_artifact_messages
-from waterdata_toolbox_demo.station_discovery import get_usgs_stations_in_bbox
+from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
 from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
 
 
@@ -54,10 +54,16 @@ def run_cli(argv):
 
     if args.command == "create-new-project":
         workflow_types = args.workflow_types or list(DEMO_CONFIG["example_stations"].keys())
-        results = get_usgs_stations_in_bbox(tuple(args.bbox), workflow_types)
+        results = run_create_new_project_section(
+            tuple(args.bbox),
+            workflow_types,
+            Path(DEMO_CONFIG["output_dir"]),
+        )
         for workflow_type in workflow_types:
-            frame = results[workflow_type]
+            frame = results[workflow_type]["frame"]
             print(f"{workflow_type}: {len(frame)} stations")
+            for message in results[workflow_type]["artifact_messages"]:
+                print(message)
         return 0
 
     if args.command == "add-data":

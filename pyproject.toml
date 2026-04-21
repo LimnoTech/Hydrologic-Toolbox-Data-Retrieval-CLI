@@ -26,3 +26,16 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+waterdata-toolbox-demo = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+build = { features = ["build"], solve-group = "default" }
+
+[tool.pixi.tasks]

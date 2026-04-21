@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import warnings
 
+import pandas as pd
+
 from waterdata_toolbox_demo.exports import (
+    dataframe_to_feature_collection,
     export_timeseries_artifacts,
     format_artifact_messages,
 )
@@ -31,6 +35,72 @@ def _call_waterdata_with_filtered_datetime_warning(function, **kwargs):
         return function(**kwargs)
 
 
+def _utc_now_string():
+    """Return a compact UTC timestamp for artifact metadata."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _row_value(row, column_name):
+    """Return a pandas row value or None when the field is missing."""
+    if row is None:
+        return None
+
+    value = row.get(column_name)
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    return value
+
+
+def _select_matching_timeseries_metadata_row(frame, metadata_frame):
+    """Prefer the metadata row that matches the exported daily-series id."""
+    if not isinstance(metadata_frame, pd.DataFrame) or metadata_frame.empty:
+        return None
+
+    if isinstance(frame, pd.DataFrame) and not frame.empty and "time_series_id" in frame.columns:
+        daily_time_series_id = frame.iloc[0].get("time_series_id")
+        matches = metadata_frame.loc[metadata_frame["time_series_id"] == daily_time_series_id]
+        if not matches.empty:
+            return matches.iloc[0]
+
+    return metadata_frame.iloc[0]
+
+
+def _build_csv_header_metadata(frame, metadata_frame):
+    """Build the raw API-derived metadata mapping for the reduced CSV export."""
+    frame_row = frame.iloc[0] if isinstance(frame, pd.DataFrame) and not frame.empty else None
+    metadata_row = _select_matching_timeseries_metadata_row(frame, metadata_frame)
+    return {
+        "TS_ID": _row_value(frame_row, "time_series_id") or _row_value(metadata_row, "time_series_id"),
+        "Parameter": _row_value(frame_row, "parameter_code")
+        or _row_value(metadata_row, "parameter_code"),
+        "Statistic": _row_value(frame_row, "statistic_id")
+        or _row_value(metadata_row, "statistic_id"),
+        "IV_TS_ID": _row_value(metadata_row, "parent_time_series_id"),
+        "Description": _row_value(metadata_row, "parameter_description"),
+        "site_no": _row_value(metadata_row, "monitoring_location_id")
+        or _row_value(frame_row, "monitoring_location_id"),
+    }
+
+
+def _build_timeseries_json_payload(
+    station_id,
+    workflow_type,
+    monitoring_locations,
+    timeseries,
+):
+    """Return the combined raw-USGS-style JSON wrapper for add-data exports."""
+    return {
+        "workflow_type": workflow_type,
+        "requested_at": _utc_now_string(),
+        "station_id": station_id,
+        "monitoring_locations": monitoring_locations,
+        "timeseries": timeseries,
+    }
+
+
 def get_usgs_timeseries(
     station_id,
     workflow_type,
@@ -44,43 +114,68 @@ def get_usgs_timeseries(
         from dataretrieval import waterdata as waterdata_module
 
     monitoring_location_id = _normalize_monitoring_location_id(station_id)
+    effective_parameter_code = "00060" if workflow_type == "discharge" else parameter_code
 
     if workflow_type in {"discharge", "gw_daily"}:
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_daily,
             monitoring_location_id=monitoring_location_id,
-            parameter_code="00060" if workflow_type == "discharge" else parameter_code,
+            parameter_code=effective_parameter_code,
             time=list(date_range),
         )
     elif workflow_type == "gw_periodic":
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_field_measurements,
             monitoring_location_id=monitoring_location_id,
-            parameter_code=parameter_code,
+            parameter_code=effective_parameter_code,
             time=list(date_range),
         )
     else:
         raise ValueError(f"Unsupported workflow type: {workflow_type}")
 
     metadata_dict = metadata if isinstance(metadata, dict) else vars(metadata).copy()
+    timeseries_metadata_frame = None
+    csv_header_metadata = None
+    if workflow_type in {"discharge", "gw_daily"} and hasattr(
+        waterdata_module, "get_time_series_metadata"
+    ):
+        timeseries_metadata_frame, _ = _call_waterdata_with_filtered_datetime_warning(
+            waterdata_module.get_time_series_metadata,
+            monitoring_location_id=monitoring_location_id,
+            parameter_code=effective_parameter_code,
+        )
+        csv_header_metadata = _build_csv_header_metadata(frame, timeseries_metadata_frame)
+    monitoring_locations_frame, _ = _call_waterdata_with_filtered_datetime_warning(
+        waterdata_module.get_monitoring_locations,
+        monitoring_location_id=monitoring_location_id,
+    )
+    monitoring_locations_json = dataframe_to_feature_collection(monitoring_locations_frame)
+    timeseries_json = dataframe_to_feature_collection(frame, geometry_enabled=False)
+    json_payload = _build_timeseries_json_payload(
+        station_id,
+        workflow_type,
+        monitoring_locations_json,
+        timeseries_json,
+    )
 
     frame = frame.reset_index(drop=True).copy()
     frame["station_id"] = station_id
     frame["workflow_type"] = workflow_type
 
-    if frame.empty:
-        return {
-            "frame": frame,
-            "records": [],
-            "files": {},
-            "metadata": {
-                **metadata_dict,
-                "warning": f"No records returned for {workflow_type} {station_id}",
-            },
-        }
-
     records = frame.to_dict(orient="records")
-    file_paths = export_timeseries_artifacts(frame, output_dir, workflow_type, station_id)
+    file_paths = export_timeseries_artifacts(
+        frame,
+        output_dir,
+        workflow_type,
+        station_id,
+        json_payload=json_payload,
+        csv_header_metadata=csv_header_metadata,
+    )
+    if frame.empty:
+        metadata_dict = {
+            **metadata_dict,
+            "warning": f"No records returned for {workflow_type} {station_id}",
+        }
     return {
         "frame": frame,
         "records": records,

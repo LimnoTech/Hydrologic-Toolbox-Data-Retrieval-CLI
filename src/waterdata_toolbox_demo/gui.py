@@ -7,7 +7,7 @@ from tkinter import ttk
 
 from waterdata_toolbox_demo.config import DEMO_CONFIG
 from waterdata_toolbox_demo.exports import format_artifact_messages
-from waterdata_toolbox_demo.station_discovery import get_usgs_stations_in_bbox
+from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
 from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
 
 
@@ -133,12 +133,18 @@ class WaterDataToolboxGUI:
             float(self.bbox_vars["east"].get()),
             float(self.bbox_vars["north"].get()),
         )
-        results = get_usgs_stations_in_bbox(bbox, workflow_types)
+        results = run_create_new_project_section(
+            bbox,
+            workflow_types,
+            self.output_dir_var.get(),
+        )
 
         self.create_output.delete("1.0", tk.END)
         for workflow_type in workflow_types:
-            frame = results[workflow_type]
+            frame = results[workflow_type]["frame"]
             self.create_output.insert(tk.END, f"{workflow_type}: {len(frame)} stations\n")
+            for message in results[workflow_type]["artifact_messages"]:
+                self.create_output.insert(tk.END, f"{message}\n")
 
     def run_add_data(self):
         """Run the add-data workflow and print artifact paths into the text area."""
