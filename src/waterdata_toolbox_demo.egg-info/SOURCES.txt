@@ -1,4 +1,5 @@
 pyproject.toml
+src/waterdata_toolbox_demo/waterdata-package-cli-gui.md
 src/waterdata_toolbox_demo/__init__.py
 src/waterdata_toolbox_demo/__main__.py
 src/waterdata_toolbox_demo/app.py
@@ -16,3 +17,6 @@ src/waterdata_toolbox_demo.egg-info/dependency_links.txt
 src/waterdata_toolbox_demo.egg-info/entry_points.txt
 src/waterdata_toolbox_demo.egg-info/requires.txt
 src/waterdata_toolbox_demo.egg-info/top_level.txt
+tests/test_packaging_config.py
+tests/test_usgs_waterdata_demo.py
+tests/test_waterdata_toolbox_demo_package.py
