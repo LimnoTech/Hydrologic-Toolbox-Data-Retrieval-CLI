@@ -1,7 +1,6 @@
 dataretrieval
 pandas
 geopandas
-pyarrow
 
 [build]
 pyinstaller
