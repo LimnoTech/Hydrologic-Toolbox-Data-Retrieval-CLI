@@ -7,7 +7,7 @@ import warnings
 import pandas as pd
 
 from waterdata_toolbox_demo.exports import (
-    export_station_artifacts,
+    export_station_shapefile_artifacts,
     format_artifact_messages,
 )
 
@@ -227,21 +227,26 @@ def run_create_new_project_section(
     output_dir,
     waterdata_module=None,
 ):
-    """Run create-project discovery and write one CSV file per workflow."""
+    """Run create-project discovery and write one shapefile per workflow."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
     workflow_payloads = {}
+    output_stems = {
+        "discharge": "discharge",
+        "gw_daily": "daily",
+        "gw_periodic": "periodic",
+    }
     for workflow_type in workflow_types:
         _, _, frame = _get_station_discovery_frames(
             bbox,
             workflow_type,
             waterdata_module,
         )
-        file_paths = export_station_artifacts(
+        file_paths = export_station_shapefile_artifacts(
             frame,
             output_dir,
-            f"create_new_project_{workflow_type}",
+            output_stems[workflow_type],
         )
         workflow_payloads[workflow_type] = {
             "frame": frame,

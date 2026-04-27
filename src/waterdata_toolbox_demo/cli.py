@@ -10,6 +10,28 @@ from waterdata_toolbox_demo.exports import format_artifact_messages
 from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
 from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
 
+_WORKFLOW_FLAG_MAP = (
+    ("discharge", "discharge"),
+    ("daily", "gw_daily"),
+    ("periodic", "gw_periodic"),
+)
+
+
+def _add_workflow_flags(parser):
+    """Add the shared human-facing workflow flags to a parser."""
+    parser.add_argument("--discharge", action="store_true")
+    parser.add_argument("--daily", action="store_true")
+    parser.add_argument("--periodic", action="store_true")
+
+
+def _selected_workflows(args):
+    """Return the internal workflow ids selected by the human-facing flags."""
+    selected = []
+    for attribute_name, workflow_type in _WORKFLOW_FLAG_MAP:
+        if getattr(args, attribute_name, False):
+            selected.append(workflow_type)
+    return selected
+
 
 def build_parser():
     """Build the top-level CLI parser for the sidecar package."""
@@ -24,20 +46,11 @@ def build_parser():
         metavar=("WEST", "SOUTH", "EAST", "NORTH"),
         default=DEMO_CONFIG["bbox"],
     )
-    create_parser.add_argument(
-        "--workflow-type",
-        dest="workflow_types",
-        action="append",
-        choices=["discharge", "gw_daily", "gw_periodic"],
-        default=None,
-    )
+    create_parser.add_argument("--output-dir", default=DEMO_CONFIG["output_dir"])
+    _add_workflow_flags(create_parser)
 
     add_parser = subparsers.add_parser("add-data")
-    add_parser.add_argument(
-        "--workflow-type",
-        choices=["discharge", "gw_daily", "gw_periodic"],
-        required=True,
-    )
+    _add_workflow_flags(add_parser)
     add_parser.add_argument("--station-id")
     add_parser.add_argument("--parameter-code")
     add_parser.add_argument("--start-date", default=DEMO_CONFIG["date_range"][0])
@@ -53,11 +66,15 @@ def run_cli(argv):
     args = parser.parse_args(list(argv))
 
     if args.command == "create-new-project":
-        workflow_types = args.workflow_types or list(DEMO_CONFIG["example_stations"].keys())
+        workflow_types = _selected_workflows(args)
+        if not workflow_types:
+            parser.error(
+                "create-new-project requires at least one of --discharge, --daily, or --periodic"
+            )
         results = run_create_new_project_section(
             tuple(args.bbox),
             workflow_types,
-            Path(DEMO_CONFIG["output_dir"]),
+            Path(args.output_dir),
         )
         for workflow_type in workflow_types:
             frame = results[workflow_type]["frame"]
@@ -67,17 +84,22 @@ def run_cli(argv):
         return 0
 
     if args.command == "add-data":
-        example = DEMO_CONFIG["example_stations"].get(args.workflow_type, {})
+        workflow_types = _selected_workflows(args)
+        if len(workflow_types) != 1:
+            parser.error("add-data requires exactly one of --discharge, --daily, or --periodic")
+
+        workflow_type = workflow_types[0]
+        example = DEMO_CONFIG["example_stations"].get(workflow_type, {})
         station_id = args.station_id or example.get("station_id")
         parameter_code = args.parameter_code or example.get("parameter_code")
         payload = get_usgs_timeseries(
             station_id,
-            args.workflow_type,
+            workflow_type,
             Path(args.output_dir),
             parameter_code=parameter_code,
             date_range=(args.start_date, args.end_date),
         )
-        print(f"{args.workflow_type}: {len(payload['frame'])} rows")
+        print(f"{workflow_type}: {len(payload['frame'])} rows")
         for message in format_artifact_messages(payload["files"]):
             print(message)
         return 0
