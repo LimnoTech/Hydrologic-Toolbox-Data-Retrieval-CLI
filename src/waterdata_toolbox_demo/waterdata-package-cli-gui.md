@@ -58,6 +58,14 @@ PYTHONPATH=src python -m waterdata_toolbox_demo
   - one combined USGS-style JSON artifact built from `dataretrieval` results
   - one CSV export
   - one parquet export when available
+- The add-data CSV now begins with two raw API metadata lines:
+  - `# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID`
+  - a matching value row where `site_no` uses the raw `monitoring_location_id` such as `USGS-02225500`
+- The add-data CSV body is reduced to:
+  - `Time`
+  - `Daily values`
+  - `Approval status`
+  - `Qualifier`
 - `create-new-project` writes one combined USGS-style JSON artifact per workflow run.
 - The JSON artifacts now wrap nested `FeatureCollection` blocks reconstructed from `dataretrieval` frames instead of flattening rows into a simple records array.
 
