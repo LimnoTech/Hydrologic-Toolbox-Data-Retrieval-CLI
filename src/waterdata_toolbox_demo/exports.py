@@ -8,6 +8,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+import shapefile
 
 _RAW_CSV_HEADER_FIELDS = [
     "site_no",
@@ -37,6 +38,25 @@ _STATION_SHAPEFILE_FIELDS = {
     "agency_code": "agency_cd",
     "hydrologic_unit_code": "huc_code",
 }
+
+_STATION_SHAPEFILE_FIELD_SPECS = {
+    "site_no": ("C", 20, 0),
+    "loc_id": ("C", 40, 0),
+    "stn_name": ("C", 100, 0),
+    "site_tp": ("C", 12, 0),
+    "state_cd": ("C", 10, 0),
+    "county_cd": ("C", 10, 0),
+    "lat": ("F", 18, 8),
+    "lon": ("F", 18, 8),
+    "agency_cd": ("C", 12, 0),
+    "huc_code": ("C", 20, 0),
+}
+
+_WGS84_PRJ = (
+    'GEOGCS["WGS 84",DATUM["WGS_1984",'
+    'SPHEROID["WGS 84",6378137,298.257223563]],'
+    'PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+)
 
 
 def _csv_safe_value(value):
@@ -132,13 +152,79 @@ def _reduce_station_shapefile_frame(frame):
     return gpd.GeoDataFrame(reduced_frame, geometry="geometry", crs=frame.crs or "EPSG:4326")
 
 
+def _dbf_safe_value(value):
+    """Return a DBF-safe scalar value."""
+    if value is None:
+        return ""
+
+    try:
+        if pd.isna(value):
+            return ""
+    except Exception:
+        pass
+
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except Exception:
+            pass
+    return value
+
+
+def _geometry_xy(value):
+    """Extract point coordinates from a shapely-like geometry value."""
+    if value is None:
+        raise ValueError("Station shapefile export requires point geometry for every row.")
+
+    x_coord = getattr(value, "x", None)
+    y_coord = getattr(value, "y", None)
+    if x_coord is not None and y_coord is not None:
+        return float(x_coord), float(y_coord)
+
+    if hasattr(value, "__geo_interface__"):
+        coordinates = value.__geo_interface__.get("coordinates")
+        if coordinates and len(coordinates) >= 2:
+            return float(coordinates[0]), float(coordinates[1])
+
+    raise ValueError("Station shapefile export requires point geometry for every row.")
+
+
+def _write_station_shapefile(writer_path, frame):
+    """Write the reduced point shapefile payload using a pure-Python writer."""
+    writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
+    writer.autoBalance = 1
+
+    for field_name, (field_type, field_size, field_decimal) in _STATION_SHAPEFILE_FIELD_SPECS.items():
+        writer.field(field_name, field_type, size=field_size, decimal=field_decimal)
+
+    for row in frame.itertuples(index=False):
+        row_mapping = row._asdict()
+        x_coord, y_coord = _geometry_xy(row_mapping["geometry"])
+        writer.point(x_coord, y_coord)
+        writer.record(
+            *[
+                _dbf_safe_value(row_mapping[field_name])
+                for field_name in _STATION_SHAPEFILE_FIELD_SPECS
+            ]
+        )
+
+    writer.close()
+
+
+def _write_station_shapefile_sidecars(shapefile_path):
+    """Write the `.prj` and `.cpg` sidecars for the station shapefile."""
+    shapefile_path.with_suffix(".prj").write_text(_WGS84_PRJ, encoding="utf-8")
+    shapefile_path.with_suffix(".cpg").write_text("UTF-8\n", encoding="utf-8")
+
+
 def export_station_shapefile_artifacts(frame, output_dir, file_stem):
     """Write a reduced-schema station shapefile and return the `.shp` path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     shapefile_path = output_dir / f"{file_stem}.shp"
     export_frame = _reduce_station_shapefile_frame(frame)
-    export_frame.to_file(shapefile_path, driver="ESRI Shapefile", encoding="UTF-8")
+    _write_station_shapefile(shapefile_path, export_frame)
+    _write_station_shapefile_sidecars(shapefile_path)
     return {"shp": shapefile_path}
 
 

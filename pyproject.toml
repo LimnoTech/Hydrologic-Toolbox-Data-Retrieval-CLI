@@ -12,6 +12,7 @@ dependencies = [
     "dataretrieval",
     "pandas",
     "geopandas",
+    "pyshp",
 ]
 
 [project.optional-dependencies]
