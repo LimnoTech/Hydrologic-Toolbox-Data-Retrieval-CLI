@@ -6,6 +6,7 @@ import csv
 from datetime import date, datetime
 from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
 
 _RAW_CSV_HEADER_FIELDS = [
@@ -22,6 +23,19 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "value": "Daily values",
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
+}
+
+_STATION_SHAPEFILE_FIELDS = {
+    "site_no": "site_no",
+    "monitoring_location_id": "loc_id",
+    "station_nm": "stn_name",
+    "site_tp_cd": "site_tp",
+    "state_cd": "state_cd",
+    "county_cd": "county_cd",
+    "dec_lat_va": "lat",
+    "dec_long_va": "lon",
+    "agency_code": "agency_cd",
+    "hydrologic_unit_code": "huc_code",
 }
 
 
@@ -100,6 +114,32 @@ def export_station_artifacts(frame, output_dir, file_stem):
     export_frame = _prepare_frame_for_export(frame)
     export_frame.to_csv(csv_path, index=False)
     return {"csv": csv_path}
+
+
+def _reduce_station_shapefile_frame(frame):
+    """Return the reduced, shapefile-safe station schema plus geometry."""
+    if not isinstance(frame, gpd.GeoDataFrame):
+        raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
+
+    reduced_frame = frame.copy()
+    for source_column in _STATION_SHAPEFILE_FIELDS:
+        if source_column not in reduced_frame.columns:
+            reduced_frame[source_column] = pd.NA
+
+    reduced_frame = reduced_frame[
+        list(_STATION_SHAPEFILE_FIELDS) + ["geometry"]
+    ].rename(columns=_STATION_SHAPEFILE_FIELDS)
+    return gpd.GeoDataFrame(reduced_frame, geometry="geometry", crs=frame.crs or "EPSG:4326")
+
+
+def export_station_shapefile_artifacts(frame, output_dir, file_stem):
+    """Write a reduced-schema station shapefile and return the `.shp` path."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    shapefile_path = output_dir / f"{file_stem}.shp"
+    export_frame = _reduce_station_shapefile_frame(frame)
+    export_frame.to_file(shapefile_path, driver="ESRI Shapefile", encoding="UTF-8")
+    return {"shp": shapefile_path}
 
 
 def _geometry_to_serializable(value):
