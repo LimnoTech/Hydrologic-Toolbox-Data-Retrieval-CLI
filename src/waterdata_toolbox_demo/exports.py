@@ -10,17 +10,17 @@ from pathlib import Path
 import pandas as pd
 
 _RAW_CSV_HEADER_FIELDS = [
-    "TS_ID",
+    "site_no",
+    "Description",
     "Parameter",
     "Statistic",
+    "TS_ID",
     "IV_TS_ID",
-    "Description",
-    "site_no",
 ]
 
 _REDUCED_CSV_COLUMN_NAMES = {
-    "value": "Daily values",
     "time": "Time",
+    "value": "Daily values",
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
 }
@@ -76,6 +76,27 @@ def _csv_safe_value(value):
         except Exception:
             pass
     return value
+
+
+def _csv_escape_field(value, force_quote=False):
+    """Return one CSV field with optional forced quoting."""
+    text = str(_csv_safe_value(value))
+    text = text.replace('"', '""')
+    needs_quote = force_quote or any(character in text for character in [",", '"', "\n", "\r"])
+    if needs_quote:
+        return f'"{text}"'
+    return text
+
+
+def _format_csv_line(values, forced_quote_fields=None, field_names=None):
+    """Return a CSV line with optional forced quoting for selected fields."""
+    forced_quote_fields = set(forced_quote_fields or [])
+    field_names = field_names or [None] * len(values)
+    formatted_values = [
+        _csv_escape_field(value, force_quote=field_name in forced_quote_fields)
+        for value, field_name in zip(values, field_names)
+    ]
+    return ",".join(formatted_values)
 
 
 def _feature_id_from_row(row, index):
@@ -252,8 +273,23 @@ def _write_timeseries_csv_artifact(csv_path, frame, csv_header_metadata=None):
 
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow([f"# {_RAW_CSV_HEADER_FIELDS[0]}", *_RAW_CSV_HEADER_FIELDS[1:]])
-        writer.writerow([f"# {header_values[0]}", *header_values[1:]])
+        handle.write(
+            "# "
+            + _format_csv_line(
+                _RAW_CSV_HEADER_FIELDS,
+                field_names=_RAW_CSV_HEADER_FIELDS,
+            )
+            + "\n"
+        )
+        handle.write(
+            "# "
+            + _format_csv_line(
+                header_values,
+                forced_quote_fields={"Parameter", "Statistic"},
+                field_names=_RAW_CSV_HEADER_FIELDS,
+            )
+            + "\n"
+        )
         writer.writerow(reduced_frame.columns)
         for row in reduced_frame.itertuples(index=False, name=None):
             writer.writerow(row)
