@@ -12,7 +12,6 @@ a = Analysis(
         'waterdata_toolbox_demo.config',
         'waterdata_toolbox_demo.exports',
         'waterdata_toolbox_demo.gui',
-        'waterdata_toolbox_demo.plotting',
         'waterdata_toolbox_demo.station_discovery',
         'waterdata_toolbox_demo.timeseries',
     ],

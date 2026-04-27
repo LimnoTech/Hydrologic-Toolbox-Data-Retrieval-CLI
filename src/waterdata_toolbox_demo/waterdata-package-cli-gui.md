@@ -1,6 +1,6 @@
-# Water Data Sidecar Package
+# Water Data ToolBox App
 
-This sidecar package copies the current demo workflow logic into reusable Python modules without changing the existing notebook or `helpers/` module.
+This package provides the same small Water Data ToolBox CLI and GUI app in a CSV-only form.
 
 ## Local package runs
 
@@ -46,20 +46,19 @@ PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
 
 ## GUI launch
 
-Launch the small desktop GUI by running the module with no arguments:
+Launch the desktop GUI by running the module with no arguments:
 
 ```bash
 PYTHONPATH=src python -m waterdata_toolbox_demo
 ```
 
-## Artifact outputs
+## CSV-only outputs
 
-- `add-data` writes:
-  - one combined USGS-style JSON artifact built from `dataretrieval` results
-  - one CSV export
-  - one parquet export when available
-- `create-new-project` writes one combined USGS-style JSON artifact per workflow run.
-- The JSON artifacts now wrap nested `FeatureCollection` blocks reconstructed from `dataretrieval` frames instead of flattening rows into a simple records array.
+- `add-data` writes one CSV artifact per run.
+- Daily workflows keep the custom metadata preamble:
+  - `# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID`
+  - `Time,Daily values,Approval status,Qualifier`
+- `create-new-project` writes one CSV artifact per selected workflow.
 
 ## Windows app build
 
@@ -70,10 +69,10 @@ pip install -e .[build]
 pyinstaller waterdata_toolbox_demo.spec
 ```
 
-The default build now emits an `onedir` app for faster startup instead of a single self-extracting `.exe`. Launch the packaged app from:
+The default build emits an `onedir` app for faster startup. Launch the packaged app from:
 
 ```text
 dist/waterdata_toolbox_demo/waterdata_toolbox_demo.exe
 ```
 
-The tradeoff is that distribution is now a folder-based app rather than one standalone file. The shared app entrypoint still uses CLI mode when arguments are present and opens the GUI when launched without arguments.
+The shared app entrypoint still uses CLI mode when arguments are present and opens the GUI when launched without arguments.

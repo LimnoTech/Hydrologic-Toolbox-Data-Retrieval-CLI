@@ -1,14 +1,12 @@
-"""Time-series workflow logic for the sidecar package."""
+"""CSV-only time-series workflow logic for the packaged app."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import warnings
 
 import pandas as pd
 
 from waterdata_toolbox_demo.exports import (
-    dataframe_to_feature_collection,
     export_timeseries_artifacts,
     format_artifact_messages,
 )
@@ -33,11 +31,6 @@ def _call_waterdata_with_filtered_datetime_warning(function, **kwargs):
             category=UserWarning,
         )
         return function(**kwargs)
-
-
-def _utc_now_string():
-    """Return a compact UTC timestamp for artifact metadata."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _row_value(row, column_name):
@@ -85,22 +78,6 @@ def _build_csv_header_metadata(frame, metadata_frame):
     }
 
 
-def _build_timeseries_json_payload(
-    station_id,
-    workflow_type,
-    monitoring_locations,
-    timeseries,
-):
-    """Return the combined raw-USGS-style JSON wrapper for add-data exports."""
-    return {
-        "workflow_type": workflow_type,
-        "requested_at": _utc_now_string(),
-        "station_id": station_id,
-        "monitoring_locations": monitoring_locations,
-        "timeseries": timeseries,
-    }
-
-
 def get_usgs_timeseries(
     station_id,
     workflow_type,
@@ -109,7 +86,7 @@ def get_usgs_timeseries(
     date_range=("1880-01-01", "2100-01-01"),
     waterdata_module=None,
 ):
-    """Return one legacy add-data payload plus exported artifacts for a station."""
+    """Return one add-data payload plus the exported CSV artifact for a station."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
@@ -145,18 +122,6 @@ def get_usgs_timeseries(
             parameter_code=effective_parameter_code,
         )
         csv_header_metadata = _build_csv_header_metadata(frame, timeseries_metadata_frame)
-    monitoring_locations_frame, _ = _call_waterdata_with_filtered_datetime_warning(
-        waterdata_module.get_monitoring_locations,
-        monitoring_location_id=monitoring_location_id,
-    )
-    monitoring_locations_json = dataframe_to_feature_collection(monitoring_locations_frame)
-    timeseries_json = dataframe_to_feature_collection(frame, geometry_enabled=False)
-    json_payload = _build_timeseries_json_payload(
-        station_id,
-        workflow_type,
-        monitoring_locations_json,
-        timeseries_json,
-    )
 
     frame = frame.reset_index(drop=True).copy()
     frame["station_id"] = station_id
@@ -168,7 +133,6 @@ def get_usgs_timeseries(
         output_dir,
         workflow_type,
         station_id,
-        json_payload=json_payload,
         csv_header_metadata=csv_header_metadata,
     )
     if frame.empty:

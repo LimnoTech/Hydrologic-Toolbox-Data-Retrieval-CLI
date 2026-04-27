@@ -1,15 +1,14 @@
-"""Station-discovery workflow logic for the sidecar package."""
+"""CSV-only station-discovery workflow logic for the packaged app."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import warnings
 
 import pandas as pd
 
 from waterdata_toolbox_demo.exports import (
-    dataframe_to_feature_collection,
-    export_combined_json_artifact,
+    export_station_artifacts,
+    format_artifact_messages,
 )
 
 
@@ -27,18 +26,6 @@ def _call_station_discovery_with_filtered_datetime_warning(function, **kwargs):
             category=UserWarning,
         )
         return function(**kwargs)
-
-
-def _utc_now_string():
-    """Return a compact UTC timestamp for artifact metadata."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _combined_payload_key(workflow_type):
-    """Return the qualifying raw payload key for a workflow export."""
-    if workflow_type == "gw_periodic":
-        return "field_measurements"
-    return "qualifying_timeseries_metadata"
 
 
 def _extract_decimal_coordinate(value, axis):
@@ -219,15 +206,8 @@ def _get_station_discovery_frames(bbox, workflow_type, waterdata_module):
     return candidate_frame, qualifying_frame, normalized_frame
 
 
-def _filter_frame_to_ids(frame, matched_ids):
-    """Filter a frame to the matched monitoring location ids."""
-    if frame is None or "monitoring_location_id" not in frame.columns:
-        return frame
-    return frame[frame["monitoring_location_id"].isin(matched_ids)].copy().reset_index(drop=True)
-
-
 def get_usgs_stations_in_bbox(bbox, workflow_types, waterdata_module=None):
-    """Return workflow-keyed station discovery frames for the legacy new-project step."""
+    """Return workflow-keyed station discovery frames for the create-project step."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
@@ -247,38 +227,25 @@ def run_create_new_project_section(
     output_dir,
     waterdata_module=None,
 ):
-    """Run create-project discovery and write one combined JSON file per workflow."""
+    """Run create-project discovery and write one CSV file per workflow."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
     workflow_payloads = {}
     for workflow_type in workflow_types:
-        candidate_frame, qualifying_frame, frame = _get_station_discovery_frames(
+        _, _, frame = _get_station_discovery_frames(
             bbox,
             workflow_type,
             waterdata_module,
         )
-        matched_ids = set(frame["monitoring_location_id"])
-        payload_key = _combined_payload_key(workflow_type)
-        combined_json_payload = {
-            "workflow_type": workflow_type,
-            "requested_at": _utc_now_string(),
-            "monitoring_locations": dataframe_to_feature_collection(
-                _filter_frame_to_ids(candidate_frame, matched_ids)
-            ),
-            payload_key: dataframe_to_feature_collection(
-                _filter_frame_to_ids(qualifying_frame, matched_ids),
-                geometry_enabled=False,
-            ),
-        }
-        json_path = export_combined_json_artifact(
-            combined_json_payload,
+        file_paths = export_station_artifacts(
+            frame,
             output_dir,
             f"create_new_project_{workflow_type}",
         )
         workflow_payloads[workflow_type] = {
             "frame": frame,
-            "files": {"json": json_path},
-            "artifact_messages": [str(json_path)],
+            "files": file_paths,
+            "artifact_messages": format_artifact_messages(file_paths),
         }
     return workflow_payloads

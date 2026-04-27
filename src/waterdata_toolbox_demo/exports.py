@@ -1,9 +1,8 @@
-"""Artifact export helpers for sidecar time-series workflows."""
+"""Artifact export helpers for CSV-only app workflows."""
 
 from __future__ import annotations
 
 import csv
-import json
 from datetime import date, datetime
 from pathlib import Path
 
@@ -24,29 +23,6 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
 }
-
-
-def _json_safe_value(value):
-    """Convert pandas-style values into JSON-serializable Python values."""
-    if value is None:
-        return None
-
-    try:
-        if pd.isna(value):
-            return None
-    except Exception:
-        pass
-
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    if hasattr(value, "item"):
-        try:
-            return value.item()
-        except Exception:
-            pass
-    return value
 
 
 def _csv_safe_value(value):
@@ -99,118 +75,35 @@ def _format_csv_line(values, forced_quote_fields=None, field_names=None):
     return ",".join(formatted_values)
 
 
-def _feature_id_from_row(row, index):
-    """Return a stable best-effort feature id for a tabular row."""
-    for key in ("id", "monitoring_location_id", "monitoring_location_number"):
-        if key in row and row[key] not in (None, ""):
-            return str(row[key])
-    if "time" in row and row["time"] not in (None, ""):
-        return f"feature-{index}-{row['time']}"
-    return f"feature-{index}"
-
-
-def _row_geometry(row, geometry_enabled):
-    """Return a GeoJSON geometry object or None for a tabular row."""
-    if not geometry_enabled:
-        return None
-
-    geometry = row.get("geometry")
-    if geometry is not None and hasattr(geometry, "__geo_interface__"):
-        return geometry.__geo_interface__
-
-    longitude = row.get("longitude", row.get("dec_long_va"))
-    latitude = row.get("latitude", row.get("dec_lat_va"))
-    if longitude is None or latitude is None:
-        return None
-
-    longitude = _json_safe_value(longitude)
-    latitude = _json_safe_value(latitude)
-    if longitude is None or latitude is None:
-        return None
-
-    return {"type": "Point", "coordinates": [longitude, latitude]}
-
-
-def dataframe_to_feature_collection(frame, geometry_enabled=True):
-    """Convert a pandas-style frame into a GeoJSON-like FeatureCollection."""
-    if frame is None:
-        rows = []
-    else:
-        rows = pd.DataFrame(frame.copy()).to_dict(orient="records")
-
-    features = []
-    for index, row in enumerate(rows):
-        feature_id = _feature_id_from_row(row, index)
-        properties = {
-            key: _json_safe_value(value)
-            for key, value in row.items()
-            if key != "geometry"
-        }
-        features.append(
-            {
-                "type": "Feature",
-                "properties": properties,
-                "id": feature_id,
-                "geometry": _row_geometry(row, geometry_enabled),
-            }
-        )
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-        "numberReturned": len(features),
-    }
-
-
-def export_combined_json_artifact(payload, output_dir, file_stem):
-    """Write a combined raw-USGS-style JSON artifact and return its path."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{file_stem}.json"
-    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    return json_path
-
-
 def export_timeseries_artifacts(
     frame,
     output_dir,
     workflow_type,
     station_id,
-    json_payload=None,
     csv_header_metadata=None,
 ):
-    """Write workflow artifacts to JSON, CSV, and parquet when available."""
+    """Write the packaged-app time-series CSV artifact and return its path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{workflow_type}_{station_id}.json"
     csv_path = output_dir / f"{workflow_type}_{station_id}.csv"
-    parquet_path = output_dir / f"{workflow_type}_{station_id}.parquet"
 
     export_frame = _prepare_frame_for_export(frame)
-
-    if json_payload is None:
-        json_path.write_text(export_frame.to_json(orient="records", indent=2), encoding="utf-8")
-    else:
-        json_path.write_text(json.dumps(json_payload, indent=2), encoding="utf-8")
     _write_timeseries_csv_artifact(csv_path, export_frame, csv_header_metadata=csv_header_metadata)
+    return {"csv": csv_path}
 
-    file_paths = {
-        "json": json_path,
-        "csv": csv_path,
-        "parquet": parquet_path,
-        "parquet_error": None,
-    }
-    try:
-        export_frame.to_parquet(parquet_path, index=False)
-    except Exception as exc:  # pragma: no cover - depends on parquet engine availability
-        file_paths["parquet"] = None
-        file_paths["parquet_error"] = str(exc)
 
-    return file_paths
+def export_station_artifacts(frame, output_dir, file_stem):
+    """Write a normalized station CSV artifact and return its path."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = output_dir / f"{file_stem}.csv"
+    export_frame = _prepare_frame_for_export(frame)
+    export_frame.to_csv(csv_path, index=False)
+    return {"csv": csv_path}
 
 
 def _geometry_to_serializable(value):
-    """Convert shapely-like geometry values into JSON-safe structures."""
+    """Convert shapely-like geometry values into CSV-safe structures."""
     if value is None:
         return None
 
@@ -300,9 +193,4 @@ def format_artifact_messages(files):
     if not files:
         return ["No artifacts written because no records were returned."]
 
-    messages = [str(files["json"]), str(files["csv"])]
-    if files["parquet"] is None:
-        messages.append(files["parquet_error"])
-    else:
-        messages.append(str(files["parquet"]))
-    return messages
+    return [str(path) for path in files.values() if path is not None]
