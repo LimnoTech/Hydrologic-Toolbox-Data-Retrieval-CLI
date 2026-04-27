@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/waterdata_toolbox_demo/waterdata-package-cli-gui.md
 src/waterdata_toolbox_demo/__init__.py

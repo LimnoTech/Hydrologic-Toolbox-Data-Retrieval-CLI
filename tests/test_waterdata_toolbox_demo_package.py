@@ -230,6 +230,7 @@ def test_create_project_shapefile_artifacts(tmp_path):
 def test_export_station_shapefile_artifacts_reduce_fields(tmp_path):
     """Station shapefiles should keep only the reduced schema plus geometry."""
     import geopandas as gpd
+    import shapefile
     from shapely.geometry import Point
 
     from waterdata_toolbox_demo.exports import export_station_shapefile_artifacts
@@ -256,9 +257,10 @@ def test_export_station_shapefile_artifacts_reduce_fields(tmp_path):
     )
 
     files = export_station_shapefile_artifacts(frame, tmp_path, "discharge")
-    result = gpd.read_file(files["shp"])
+    reader = shapefile.Reader(str(files["shp"]))
+    field_names = [field[0] for field in reader.fields[1:]]
 
-    assert list(result.columns) == [
+    assert field_names == [
         "site_no",
         "loc_id",
         "stn_name",
@@ -269,8 +271,52 @@ def test_export_station_shapefile_artifacts_reduce_fields(tmp_path):
         "lon",
         "agency_cd",
         "huc_code",
-        "geometry",
     ]
+    assert reader.shapeType == shapefile.POINT
+    assert files["shp"].with_suffix(".prj").read_text(encoding="utf-8").find("WGS_1984") != -1
+    assert files["shp"].with_suffix(".cpg").read_text(encoding="utf-8").strip() == "UTF-8"
+
+
+def test_export_station_shapefile_artifacts_do_not_require_geopandas_writer(
+    tmp_path, monkeypatch
+):
+    """Shapefile export should not depend on GeoPandas to_file at runtime."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    from waterdata_toolbox_demo.exports import export_station_shapefile_artifacts
+
+    frame = gpd.GeoDataFrame(
+        [
+            {
+                "site_no": "02225500",
+                "monitoring_location_id": "USGS-02225500",
+                "station_nm": "OHOOPEE RIVER NEAR REIDSVILLE, GA",
+                "site_tp_cd": "ST",
+                "state_cd": "13",
+                "county_cd": "267",
+                "dec_lat_va": 32.0771388888889,
+                "dec_long_va": -82.1765,
+                "agency_code": "USGS",
+                "hydrologic_unit_code": "03060201",
+                "geometry": Point(-82.1765, 32.0771388888889),
+            }
+        ],
+        geometry="geometry",
+        crs="EPSG:4326",
+    )
+
+    monkeypatch.setattr(
+        gpd.GeoDataFrame,
+        "to_file",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("GeoPandas to_file should not be used")
+        ),
+    )
+
+    files = export_station_shapefile_artifacts(frame, tmp_path, "discharge")
+
+    assert files["shp"].exists()
 
 
 def test_package_build_docs_describe_cli_only_shapefile_app():

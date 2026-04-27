@@ -2,6 +2,8 @@
 
 This package provides a CLI-only packaged app for the Water Data ToolBox workflows. The GUI code remains in the repo, but the packaged executable does not route into it.
 
+The packaged shapefile export uses a pure-Python writer, so the `.exe` does not depend on Fiona, pyogrio, or GDAL at runtime for `create-new-project`.
+
 ## Local package runs
 
 From the repo root, use the `src/` layout directly:
