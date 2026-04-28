@@ -1,37 +1,36 @@
 Metadata-Version: 2.4
 Name: waterdata-toolbox-demo
 Version: 0.1.0
-Summary: Sidecar package for the Water Data ToolBox demo workflows.
+Summary: CSV-only CLI and GUI app for Water Data ToolBox demo workflows.
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: dataretrieval
 Requires-Dist: pandas
 Requires-Dist: geopandas
-Requires-Dist: pyarrow
 Provides-Extra: build
 Requires-Dist: pyinstaller; extra == "build"
 
-# Water Data Sidecar Package
+# Water Data ToolBox App
 
-This sidecar package copies the current demo workflow logic into reusable Python modules without changing the existing notebook or `helpers/` module.
+This package provides a CLI-only packaged app for the Water Data ToolBox workflows. The GUI code remains in the repo, but the packaged executable does not route into it.
 
 ## Local package runs
 
 From the repo root, use the `src/` layout directly:
 
 ```bash
-PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project
-PYTHONPATH=src python -m waterdata_toolbox_demo add-data --workflow-type discharge
-PYTHONPATH=src python -m waterdata_toolbox_demo
+PYTHONPATH=src python -m waterdata_toolbox_demo --help
+PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project --discharge
+PYTHONPATH=src python -m waterdata_toolbox_demo add-data --discharge
 ```
 
 If you prefer an installed package workflow:
 
 ```bash
 pip install -e .
-python -m waterdata_toolbox_demo create-new-project
-python -m waterdata_toolbox_demo add-data --workflow-type gw_daily
-python -m waterdata_toolbox_demo
+python -m waterdata_toolbox_demo --help
+python -m waterdata_toolbox_demo create-new-project --discharge --daily
+python -m waterdata_toolbox_demo add-data --periodic
 ```
 
 ## CLI examples
@@ -41,15 +40,16 @@ Create New Project:
 ```bash
 PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project \
   --bbox -82.859 31.899 -82.013 32.947 \
-  --workflow-type discharge \
-  --workflow-type gw_daily
+  --discharge \
+  --daily \
+  --output-dir outputs/usgs_waterdata_demo
 ```
 
 Adding Data to Project:
 
 ```bash
 PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
-  --workflow-type gw_periodic \
+  --periodic \
   --station-id 410947071344803 \
   --parameter-code 72019 \
   --start-date 1880-01-01 \
@@ -57,30 +57,17 @@ PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
   --output-dir outputs/usgs_waterdata_demo
 ```
 
-## GUI launch
+## Outputs
 
-Launch the small desktop GUI by running the module with no arguments:
-
-```bash
-PYTHONPATH=src python -m waterdata_toolbox_demo
-```
-
-## Artifact outputs
-
-- `add-data` writes:
-  - one combined USGS-style JSON artifact built from `dataretrieval` results
-  - one CSV export
-  - one parquet export when available
-- The add-data CSV now begins with two raw API metadata lines:
-  - `# TS_ID,Parameter,Statistic,IV_TS_ID,Description,site_no`
-  - a matching value row where `site_no` uses the raw `monitoring_location_id` such as `USGS-02225500`
-- The add-data CSV body is reduced to:
-  - `Daily values`
-  - `Time`
-  - `Approval status`
-  - `Qualifier`
-- `create-new-project` writes one combined USGS-style JSON artifact per workflow run.
-- The JSON artifacts wrap nested `FeatureCollection` blocks reconstructed from `dataretrieval` frames instead of flattening rows into a simple records array.
+- `add-data` writes one CSV artifact per run.
+- Daily workflows keep the custom metadata preamble:
+  - `# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID`
+  - `Time,Daily values,Approval status,Qualifier`
+- `create-new-project` writes one shapefile set per selected workflow:
+  - `discharge.shp`
+  - `daily.shp`
+  - `periodic.shp`
+- The shapefile schema is intentionally reduced for readability and format safety. See `docs/create-new-project-shapefile-fields.md`.
 
 ## Windows app build
 
@@ -91,10 +78,10 @@ pip install -e .[build]
 pyinstaller waterdata_toolbox_demo.spec
 ```
 
-The default build now emits an `onedir` app for faster startup instead of a single self-extracting `.exe`. Launch the packaged app from:
+The default build emits an `onedir` app for faster startup. Launch the packaged app from:
 
 ```text
 dist/waterdata_toolbox_demo/waterdata_toolbox_demo.exe
 ```
 
-The tradeoff is that distribution is now a folder-based app rather than one standalone file. The shared app entrypoint still uses CLI mode when arguments are present and opens the GUI when launched without arguments.
+Launching the packaged app with no arguments prints CLI help and exits.

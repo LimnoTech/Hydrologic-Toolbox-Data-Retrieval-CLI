@@ -1,15 +1,14 @@
-"""Station-discovery workflow logic for the sidecar package."""
+"""CSV-only station-discovery workflow logic for the packaged app."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import warnings
 
 import pandas as pd
 
 from waterdata_toolbox_demo.exports import (
-    dataframe_to_feature_collection,
-    export_combined_json_artifact,
+    export_station_shapefile_artifacts,
+    format_artifact_messages,
 )
 
 
@@ -27,18 +26,6 @@ def _call_station_discovery_with_filtered_datetime_warning(function, **kwargs):
             category=UserWarning,
         )
         return function(**kwargs)
-
-
-def _utc_now_string():
-    """Return a compact UTC timestamp for artifact metadata."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _combined_payload_key(workflow_type):
-    """Return the qualifying raw payload key for a workflow export."""
-    if workflow_type == "gw_periodic":
-        return "field_measurements"
-    return "qualifying_timeseries_metadata"
 
 
 def _extract_decimal_coordinate(value, axis):
@@ -70,31 +57,45 @@ def _load_geopandas():
 
 
 def _to_station_geodataframe(frame):
-    """Convert a normalized station frame into an EPSG:4326 GeoDataFrame."""
+    """Convert a filtered raw station frame into an EPSG:4326 GeoDataFrame."""
     gpd = _load_geopandas()
     station_frame = frame.copy()
-
-    station_frame["dec_long_va"] = pd.to_numeric(
-        station_frame.get("dec_long_va"), errors="coerce"
-    )
-    station_frame["dec_lat_va"] = pd.to_numeric(
-        station_frame.get("dec_lat_va"), errors="coerce"
-    )
 
     existing_geometry = station_frame.get("geometry")
     if existing_geometry is not None and existing_geometry.notna().any():
         geometry = gpd.GeoSeries(existing_geometry, index=station_frame.index, crs="EPSG:4326")
         station_frame = station_frame.drop(columns=["geometry"])
     else:
+        longitude_column = None
+        latitude_column = None
+        if "longitude" in station_frame.columns and "latitude" in station_frame.columns:
+            longitude_column = "longitude"
+            latitude_column = "latitude"
+        elif "dec_long_va" in station_frame.columns and "dec_lat_va" in station_frame.columns:
+            longitude_column = "dec_long_va"
+            latitude_column = "dec_lat_va"
+
         geometry_values = pd.Series([None] * len(station_frame), index=station_frame.index)
-        valid_geometry = (
-            station_frame["dec_long_va"].notna() & station_frame["dec_lat_va"].notna()
-        )
+        if longitude_column is None or latitude_column is None:
+            valid_geometry = pd.Series([False] * len(station_frame), index=station_frame.index)
+            longitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
+            latitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
+        else:
+            longitude_values = pd.to_numeric(
+                station_frame[longitude_column],
+                errors="coerce",
+            )
+            latitude_values = pd.to_numeric(
+                station_frame[latitude_column],
+                errors="coerce",
+            )
+            valid_geometry = longitude_values.notna() & latitude_values.notna()
+
         if valid_geometry.any():
             geometry_values.loc[valid_geometry] = list(
                 gpd.points_from_xy(
-                    station_frame.loc[valid_geometry, "dec_long_va"],
-                    station_frame.loc[valid_geometry, "dec_lat_va"],
+                    longitude_values.loc[valid_geometry],
+                    latitude_values.loc[valid_geometry],
                 )
             )
         geometry = gpd.GeoSeries(geometry_values, index=station_frame.index, crs="EPSG:4326")
@@ -103,74 +104,14 @@ def _to_station_geodataframe(frame):
 
 
 def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
-    """Reshape discovered stations into the legacy-style preview columns."""
+    """Filter discovered stations while preserving the raw monitoring-location schema."""
     candidate_ids = set(candidate_frame["monitoring_location_id"])
     qualifying_ids = set(qualifying_frame["monitoring_location_id"])
     frame = candidate_frame[
         candidate_frame["monitoring_location_id"].isin(candidate_ids & qualifying_ids)
     ].copy()
-    frame["workflow_type"] = workflow_type
     frame = frame.drop_duplicates(subset=["monitoring_location_id"])
     frame = frame.sort_values("monitoring_location_id").reset_index(drop=True)
-
-    if frame.empty and "workflow_type" not in frame.columns:
-        frame["workflow_type"] = pd.Series(dtype="object")
-
-    if "site_no" not in frame.columns:
-        if "monitoring_location_number" in frame.columns:
-            frame["site_no"] = frame["monitoring_location_number"]
-        elif "monitoring_location_id" in frame.columns:
-            frame["site_no"] = frame["monitoring_location_id"].astype(str).str.replace(
-                r"^USGS-", "", regex=True
-            )
-        else:
-            frame["site_no"] = pd.Series(dtype="object")
-
-    if "station_nm" not in frame.columns:
-        if "monitoring_location_name" in frame.columns:
-            frame["station_nm"] = frame["monitoring_location_name"]
-        elif "location_name" in frame.columns:
-            frame["station_nm"] = frame["location_name"]
-        else:
-            frame["station_nm"] = pd.Series(dtype="object")
-
-    if "site_tp_cd" not in frame.columns:
-        if "site_type_code" in frame.columns:
-            frame["site_tp_cd"] = frame["site_type_code"]
-        else:
-            frame["site_tp_cd"] = pd.Series(dtype="object")
-
-    if "dec_lat_va" not in frame.columns:
-        if "latitude" in frame.columns:
-            frame["dec_lat_va"] = frame["latitude"]
-        elif "geometry" in frame.columns:
-            frame["dec_lat_va"] = frame["geometry"].map(
-                lambda value: _extract_decimal_coordinate(value, "lat")
-            )
-        else:
-            frame["dec_lat_va"] = pd.Series([pd.NA] * len(frame), dtype="object")
-
-    if "dec_long_va" not in frame.columns:
-        if "longitude" in frame.columns:
-            frame["dec_long_va"] = frame["longitude"]
-        elif "geometry" in frame.columns:
-            frame["dec_long_va"] = frame["geometry"].map(
-                lambda value: _extract_decimal_coordinate(value, "lon")
-            )
-        else:
-            frame["dec_long_va"] = pd.Series([pd.NA] * len(frame), dtype="object")
-
-    if "state_cd" not in frame.columns:
-        if "state_code" in frame.columns:
-            frame["state_cd"] = frame["state_code"]
-        else:
-            frame["state_cd"] = pd.Series(dtype="object")
-
-    if "county_cd" not in frame.columns:
-        if "county_code" in frame.columns:
-            frame["county_cd"] = frame["county_code"]
-        else:
-            frame["county_cd"] = pd.Series(dtype="object")
 
     return _to_station_geodataframe(frame)
 
@@ -219,15 +160,8 @@ def _get_station_discovery_frames(bbox, workflow_type, waterdata_module):
     return candidate_frame, qualifying_frame, normalized_frame
 
 
-def _filter_frame_to_ids(frame, matched_ids):
-    """Filter a frame to the matched monitoring location ids."""
-    if frame is None or "monitoring_location_id" not in frame.columns:
-        return frame
-    return frame[frame["monitoring_location_id"].isin(matched_ids)].copy().reset_index(drop=True)
-
-
 def get_usgs_stations_in_bbox(bbox, workflow_types, waterdata_module=None):
-    """Return workflow-keyed station discovery frames for the legacy new-project step."""
+    """Return workflow-keyed station discovery frames for the create-project step."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
@@ -247,38 +181,30 @@ def run_create_new_project_section(
     output_dir,
     waterdata_module=None,
 ):
-    """Run create-project discovery and write one combined JSON file per workflow."""
+    """Run create-project discovery and write one shapefile per workflow."""
     if waterdata_module is None:
         from dataretrieval import waterdata as waterdata_module
 
     workflow_payloads = {}
+    output_stems = {
+        "discharge": "discharge",
+        "gw_daily": "daily",
+        "gw_periodic": "periodic",
+    }
     for workflow_type in workflow_types:
-        candidate_frame, qualifying_frame, frame = _get_station_discovery_frames(
+        _, _, frame = _get_station_discovery_frames(
             bbox,
             workflow_type,
             waterdata_module,
         )
-        matched_ids = set(frame["monitoring_location_id"])
-        payload_key = _combined_payload_key(workflow_type)
-        combined_json_payload = {
-            "workflow_type": workflow_type,
-            "requested_at": _utc_now_string(),
-            "monitoring_locations": dataframe_to_feature_collection(
-                _filter_frame_to_ids(candidate_frame, matched_ids)
-            ),
-            payload_key: dataframe_to_feature_collection(
-                _filter_frame_to_ids(qualifying_frame, matched_ids),
-                geometry_enabled=False,
-            ),
-        }
-        json_path = export_combined_json_artifact(
-            combined_json_payload,
+        file_paths = export_station_shapefile_artifacts(
+            frame,
             output_dir,
-            f"create_new_project_{workflow_type}",
+            output_stems[workflow_type],
         )
         workflow_payloads[workflow_type] = {
             "frame": frame,
-            "files": {"json": json_path},
-            "artifact_messages": [str(json_path)],
+            "files": file_paths,
+            "artifact_messages": format_artifact_messages(file_paths),
         }
     return workflow_payloads

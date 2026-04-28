@@ -1,5 +1,6 @@
+README.md
 pyproject.toml
-docs/waterdata-package-cli-gui.md
+src/waterdata_toolbox_demo/waterdata-package-cli-gui.md
 src/waterdata_toolbox_demo/__init__.py
 src/waterdata_toolbox_demo/__main__.py
 src/waterdata_toolbox_demo/app.py
@@ -10,6 +11,7 @@ src/waterdata_toolbox_demo/gui.py
 src/waterdata_toolbox_demo/plotting.py
 src/waterdata_toolbox_demo/station_discovery.py
 src/waterdata_toolbox_demo/timeseries.py
+src/waterdata_toolbox_demo/waterdata-package-cli-gui.md
 src/waterdata_toolbox_demo.egg-info/PKG-INFO
 src/waterdata_toolbox_demo.egg-info/SOURCES.txt
 src/waterdata_toolbox_demo.egg-info/dependency_links.txt

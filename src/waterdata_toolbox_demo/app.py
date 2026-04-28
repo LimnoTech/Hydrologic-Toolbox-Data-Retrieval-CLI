@@ -1,4 +1,4 @@
-"""Dual-mode app entrypoint for the Water Data ToolBox sidecar package."""
+"""CLI-first app entrypoint for the Water Data ToolBox packaged app."""
 
 from __future__ import annotations
 
@@ -21,10 +21,13 @@ def run_gui() -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Route to CLI mode when arguments are present, otherwise start the GUI."""
+    """Route the packaged app through the CLI and show help on empty args."""
     args = list(sys.argv[1:] if argv is None else argv)
     if args:
         result = run_cli(args)
     else:
-        result = run_gui()
+        try:
+            result = run_cli(["--help"])
+        except SystemExit as exc:
+            result = exc.code
     return 0 if result is None else int(result)

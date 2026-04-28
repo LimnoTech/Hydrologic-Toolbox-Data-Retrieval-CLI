@@ -1,13 +1,12 @@
-"""Artifact export helpers for sidecar time-series workflows."""
-
 from __future__ import annotations
 
 import csv
-import json
 from datetime import date, datetime
 from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
+import shapefile
 
 _RAW_CSV_HEADER_FIELDS = [
     "site_no",
@@ -16,6 +15,12 @@ _RAW_CSV_HEADER_FIELDS = [
     "Statistic",
     "TS_ID",
     "IV_TS_ID",
+    "Site number",
+    "Station name",
+    "Latitude",
+    "Longitude",
+    "HUC code",
+    "Drainage area",
 ]
 
 _REDUCED_CSV_COLUMN_NAMES = {
@@ -24,29 +29,54 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
 }
+#https://api.waterdata.usgs.gov/docs/ogcapi/migration/
+_STATION_SHAPEFILE_CROSSWALK = [
+    {"source_name": "agency_code", "nwis_name": "agency_cd"},
+    {"source_name": "monitoring_location_number", "nwis_name": "site_no"},
+    {"source_name": "monitoring_location_name", "nwis_name": "station_nm"},
+    {"source_name": "site_type_code", "nwis_name": "site_tp_cd"},
+    {"source_name": "geometry", "nwis_name": "dec_lat_va", "derived_axis": "lat"},
+    {"source_name": "geometry", "nwis_name": "dec_long_va", "derived_axis": "lon"},
+    {
+        "source_name": "horizontal_position_method_code",
+        "nwis_name": "coord_meth_cd",
+    },
+    {
+        "source_name": "horizontal_positional_accuracy",
+        "nwis_name": "coord_acy_cd",
+    },
+    {"source_name": "original_horizontal_datum", "nwis_name": "coord_datum_cd"},
+    {"source_name": "district_code", "nwis_name": "district_cd"},
+    {"source_name": "state_code", "nwis_name": "state_cd"},
+    {"source_name": "county_code", "nwis_name": "county_cd"},
+    {"source_name": "country_code", "nwis_name": "country_cd"},
+    {"source_name": "altitude", "nwis_name": "alt_va"},
+    {"source_name": "altitude_method_code", "nwis_name": "alt_meth_cd"},
+    {"source_name": "altitude_accuracy", "nwis_name": "alt_acy_va"},
+    {"source_name": "vertical_datum", "nwis_name": "alt_datum_cd"},
+    {"source_name": "hydrologic_unit_code", "nwis_name": "huc_cd"},
+    {"source_name": "basin_code", "nwis_name": "basin_cd"},
+    {"source_name": "construction_date", "nwis_name": "construction_dt"},
+    {"source_name": "drainage_area", "nwis_name": "drain_area_va"},
+    {
+        "source_name": "contributing_drainage_area",
+        "nwis_name": "contrib_drain_area_va",
+    },
+    {"source_name": "time_zone_abbreviation", "nwis_name": "tz_cd"},
+    {"source_name": "uses_daylight_savings", "nwis_name": "local_time_fg"},
+    {"source_name": "national_aquifer_code", "nwis_name": "nat_aqfr_cd"},
+    {"source_name": "aquifer_code", "nwis_name": "aqfr_cd"},
+    {"source_name": "aquifer_type_code", "nwis_name": "aqfr_type_cd"},
+    {"source_name": "well_constructed_depth", "nwis_name": "well_depth_va"},
+    {"source_name": "hole_constructed_depth", "nwis_name": "hole_depth_va"},
+    {"source_name": "depth_source_code", "nwis_name": "depth_src_cd"},
+]
 
-
-def _json_safe_value(value):
-    """Convert pandas-style values into JSON-serializable Python values."""
-    if value is None:
-        return None
-
-    try:
-        if pd.isna(value):
-            return None
-    except Exception:
-        pass
-
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    if hasattr(value, "item"):
-        try:
-            return value.item()
-        except Exception:
-            pass
-    return value
+_WGS84_PRJ = (
+    'GEOGCS["WGS 84",DATUM["WGS_1984",'
+    'SPHEROID["WGS 84",6378137,298.257223563]],'
+    'PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+)
 
 
 def _csv_safe_value(value):
@@ -99,118 +129,260 @@ def _format_csv_line(values, forced_quote_fields=None, field_names=None):
     return ",".join(formatted_values)
 
 
-def _feature_id_from_row(row, index):
-    """Return a stable best-effort feature id for a tabular row."""
-    for key in ("id", "monitoring_location_id", "monitoring_location_number"):
-        if key in row and row[key] not in (None, ""):
-            return str(row[key])
-    if "time" in row and row["time"] not in (None, ""):
-        return f"feature-{index}-{row['time']}"
-    return f"feature-{index}"
-
-
-def _row_geometry(row, geometry_enabled):
-    """Return a GeoJSON geometry object or None for a tabular row."""
-    if not geometry_enabled:
-        return None
-
-    geometry = row.get("geometry")
-    if geometry is not None and hasattr(geometry, "__geo_interface__"):
-        return geometry.__geo_interface__
-
-    longitude = row.get("longitude", row.get("dec_long_va"))
-    latitude = row.get("latitude", row.get("dec_lat_va"))
-    if longitude is None or latitude is None:
-        return None
-
-    longitude = _json_safe_value(longitude)
-    latitude = _json_safe_value(latitude)
-    if longitude is None or latitude is None:
-        return None
-
-    return {"type": "Point", "coordinates": [longitude, latitude]}
-
-
-def dataframe_to_feature_collection(frame, geometry_enabled=True):
-    """Convert a pandas-style frame into a GeoJSON-like FeatureCollection."""
-    if frame is None:
-        rows = []
-    else:
-        rows = pd.DataFrame(frame.copy()).to_dict(orient="records")
-
-    features = []
-    for index, row in enumerate(rows):
-        feature_id = _feature_id_from_row(row, index)
-        properties = {
-            key: _json_safe_value(value)
-            for key, value in row.items()
-            if key != "geometry"
-        }
-        features.append(
-            {
-                "type": "Feature",
-                "properties": properties,
-                "id": feature_id,
-                "geometry": _row_geometry(row, geometry_enabled),
-            }
-        )
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-        "numberReturned": len(features),
-    }
-
-
-def export_combined_json_artifact(payload, output_dir, file_stem):
-    """Write a combined raw-USGS-style JSON artifact and return its path."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{file_stem}.json"
-    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    return json_path
-
-
 def export_timeseries_artifacts(
     frame,
     output_dir,
     workflow_type,
     station_id,
-    json_payload=None,
     csv_header_metadata=None,
 ):
-    """Write workflow artifacts to JSON, CSV, and parquet when available."""
+    """Write the packaged-app time-series CSV artifact and return its path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{workflow_type}_{station_id}.json"
     csv_path = output_dir / f"{workflow_type}_{station_id}.csv"
-    parquet_path = output_dir / f"{workflow_type}_{station_id}.parquet"
 
     export_frame = _prepare_frame_for_export(frame)
-
-    if json_payload is None:
-        json_path.write_text(export_frame.to_json(orient="records", indent=2), encoding="utf-8")
-    else:
-        json_path.write_text(json.dumps(json_payload, indent=2), encoding="utf-8")
     _write_timeseries_csv_artifact(csv_path, export_frame, csv_header_metadata=csv_header_metadata)
+    return {"csv": csv_path}
 
-    file_paths = {
-        "json": json_path,
-        "csv": csv_path,
-        "parquet": parquet_path,
-        "parquet_error": None,
-    }
+
+def export_station_artifacts(frame, output_dir, file_stem):
+    """Write a normalized station CSV artifact and return its path."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = output_dir / f"{file_stem}.csv"
+    export_frame = _prepare_frame_for_export(frame)
+    export_frame.to_csv(csv_path, index=False)
+    return {"csv": csv_path}
+
+
+def _dbf_text_value(value):
+    """Return a DBF-safe string value."""
+    safe_value = _csv_safe_value(value)
+    return "" if safe_value == "" else str(safe_value)
+
+
+def _dbf_safe_value(value, field_type):
+    """Return a DBF-safe scalar value for one shapefile field type."""
+    if value is None:
+        return "" if field_type == "C" else None
+
     try:
-        export_frame.to_parquet(parquet_path, index=False)
-    except Exception as exc:  # pragma: no cover - depends on parquet engine availability
-        file_paths["parquet"] = None
-        file_paths["parquet_error"] = str(exc)
+        if pd.isna(value):
+            return "" if field_type == "C" else None
+    except Exception:
+        pass
 
-    return file_paths
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except Exception:
+            pass
+
+    if field_type == "C":
+        return _dbf_text_value(value)
+    if field_type == "L":
+        return bool(value) if value is not None else None
+    return value
+
+
+def _selected_station_shapefile_entries(frame):
+    """Return the ordered shapefile export entries that are available on the frame."""
+    selected_entries = []
+    for entry in _STATION_SHAPEFILE_CROSSWALK:
+        if entry["source_name"] == "geometry":
+            selected_entries.append(entry)
+            continue
+        if entry["source_name"] in frame.columns:
+            selected_entries.append(entry)
+    return selected_entries
+
+
+def _shapefile_field_name_from_nwis_name(nwis_name):
+    """Return the 10-character DBF field name derived from one NWIS alias."""
+    return nwis_name[:10]
+
+
+def _validated_station_shapefile_field_names(entries):
+    """Return NWIS-derived field names or raise if truncation causes a collision."""
+    field_names = {}
+    collisions = {}
+
+    for entry in entries:
+        field_name = _shapefile_field_name_from_nwis_name(entry["nwis_name"])
+        field_names.setdefault(field_name, []).append(entry)
+
+    collisions = {
+        field_name: items for field_name, items in field_names.items() if len(items) > 1
+    }
+    if collisions:
+        details = "; ".join(
+            f"{field_name} <- {', '.join(item['nwis_name'] for item in items)}"
+            for field_name, items in collisions.items()
+        )
+        raise ValueError(
+            "NWIS aliases collide after 10-character truncation: " + details
+        )
+
+    return {
+        entry["nwis_name"]: _shapefile_field_name_from_nwis_name(entry["nwis_name"])
+        for entry in entries
+    }
+
+
+def _series_is_boolean_like(series):
+    """Return True when a series contains only boolean-like values."""
+    if pd.api.types.is_bool_dtype(series):
+        return True
+
+    non_null = series.dropna()
+    if non_null.empty:
+        return False
+
+    for value in non_null:
+        if hasattr(value, "item"):
+            try:
+                value = value.item()
+            except Exception:
+                pass
+        if not isinstance(value, bool):
+            return False
+    return True
+
+
+def _infer_shapefile_field_spec(series):
+    """Return a pyshp field spec for one raw station column."""
+    if _series_is_boolean_like(series):
+        return ("L", 1, 0)
+
+    if pd.api.types.is_integer_dtype(series):
+        return ("N", 18, 0)
+
+    if pd.api.types.is_float_dtype(series):
+        return ("F", 18, 8)
+
+    if pd.api.types.is_datetime64_any_dtype(series):
+        max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+        return ("C", min(max(max_length, 1), 254), 0)
+
+    max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+    return ("C", min(max(max_length, 1), 254), 0)
+
+
+def _geometry_decimal_coordinate(value, axis):
+    """Return one decimal coordinate derived from point geometry."""
+    x_coord, y_coord = _geometry_xy(value)
+    return y_coord if axis == "lat" else x_coord
+
+
+def _station_shapefile_series(frame, entry):
+    """Return the series used to infer DBF type information for one entry."""
+    if entry["source_name"] == "geometry":
+        return frame["geometry"].map(
+            lambda value: _geometry_decimal_coordinate(value, entry["derived_axis"])
+        )
+    return frame[entry["source_name"]]
+
+
+def _station_shapefile_field_specs(frame):
+    """Return the crosswalk-driven shapefile field spec mapping for station export."""
+    entries = _selected_station_shapefile_entries(frame)
+    field_name_map = _validated_station_shapefile_field_names(entries)
+    field_specs = []
+    for entry in entries:
+        field_series = _station_shapefile_series(frame, entry)
+        field_type, field_size, field_decimal = _infer_shapefile_field_spec(field_series)
+        field_specs.append(
+            {
+                "source_name": entry["source_name"],
+                "nwis_name": entry["nwis_name"],
+                "field_name": field_name_map[entry["nwis_name"]],
+                "field_type": field_type,
+                "field_size": field_size,
+                "field_decimal": field_decimal,
+                "derived_axis": entry.get("derived_axis"),
+            }
+        )
+    return field_specs
+
+
+def _geometry_xy(value):
+    """Extract point coordinates from a shapely-like geometry value."""
+    if value is None:
+        raise ValueError("Station shapefile export requires point geometry for every row.")
+
+    x_coord = getattr(value, "x", None)
+    y_coord = getattr(value, "y", None)
+    if x_coord is not None and y_coord is not None:
+        return float(x_coord), float(y_coord)
+
+    if hasattr(value, "__geo_interface__"):
+        coordinates = value.__geo_interface__.get("coordinates")
+        if coordinates and len(coordinates) >= 2:
+            return float(coordinates[0]), float(coordinates[1])
+
+    raise ValueError("Station shapefile export requires point geometry for every row.")
+
+
+def _station_shapefile_value(row_mapping, spec):
+    """Return one exported DBF value for a station row and crosswalked field spec."""
+    if spec["source_name"] == "geometry":
+        return _geometry_decimal_coordinate(
+            row_mapping["geometry"],
+            spec["derived_axis"],
+        )
+    return row_mapping.get(spec["source_name"])
+
+
+def _write_station_shapefile(writer_path, frame):
+    """Write the NWIS-crosswalk point shapefile payload using a pure-Python writer."""
+    field_specs = _station_shapefile_field_specs(frame)
+    writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
+    writer.autoBalance = 1
+
+    for spec in field_specs:
+        writer.field(
+            spec["field_name"],
+            spec["field_type"],
+            size=spec["field_size"],
+            decimal=spec["field_decimal"],
+        )
+
+    for row in frame.itertuples(index=False):
+        row_mapping = row._asdict()
+        x_coord, y_coord = _geometry_xy(row_mapping["geometry"])
+        writer.point(x_coord, y_coord)
+        writer.record(
+            *[
+                _dbf_safe_value(_station_shapefile_value(row_mapping, spec), spec["field_type"])
+                for spec in field_specs
+            ]
+        )
+
+    writer.close()
+
+
+def _write_station_shapefile_sidecars(shapefile_path):
+    """Write the `.prj` and `.cpg` sidecars for the station shapefile."""
+    shapefile_path.with_suffix(".prj").write_text(_WGS84_PRJ, encoding="utf-8")
+    shapefile_path.with_suffix(".cpg").write_text("UTF-8\n", encoding="utf-8")
+
+
+def export_station_shapefile_artifacts(frame, output_dir, file_stem):
+    """Write a shapefile with NWIS-crosswalk monitoring-location attributes and return the `.shp` path."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    shapefile_path = output_dir / f"{file_stem}.shp"
+    if not isinstance(frame, gpd.GeoDataFrame):
+        raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
+    export_frame = gpd.GeoDataFrame(frame.copy(), geometry="geometry", crs=frame.crs or "EPSG:4326")
+    _write_station_shapefile(shapefile_path, export_frame)
+    _write_station_shapefile_sidecars(shapefile_path)
+    return {"shp": shapefile_path}
 
 
 def _geometry_to_serializable(value):
-    """Convert shapely-like geometry values into JSON-safe structures."""
+    """Convert shapely-like geometry values into CSV-safe structures."""
     if value is None:
         return None
 
@@ -300,9 +472,4 @@ def format_artifact_messages(files):
     if not files:
         return ["No artifacts written because no records were returned."]
 
-    messages = [str(files["json"]), str(files["csv"])]
-    if files["parquet"] is None:
-        messages.append(files["parquet_error"])
-    else:
-        messages.append(str(files["parquet"]))
-    return messages
+    return [str(path) for path in files.values() if path is not None]

@@ -10,3 +10,10 @@ build/*# pixi environments
 .pixi/*
 !.pixi/config.toml
 build/*
+.DS_Store
+.DS_Store
+dist/.DS_Store
+/docs
+README.md
+
+
