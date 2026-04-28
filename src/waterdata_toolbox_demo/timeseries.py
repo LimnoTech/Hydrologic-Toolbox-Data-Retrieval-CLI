@@ -61,20 +61,85 @@ def _select_matching_timeseries_metadata_row(frame, metadata_frame):
     return metadata_frame.iloc[0]
 
 
-def _build_csv_header_metadata(frame, metadata_frame):
+def _select_matching_monitoring_location_row(monitoring_location_id, monitoring_locations_frame):
+    """Prefer the monitoring-location row that matches the exported station id."""
+    if (
+        not isinstance(monitoring_locations_frame, pd.DataFrame)
+        or monitoring_locations_frame.empty
+    ):
+        return None
+
+    if "monitoring_location_id" in monitoring_locations_frame.columns:
+        matches = monitoring_locations_frame.loc[
+            monitoring_locations_frame["monitoring_location_id"] == monitoring_location_id
+        ]
+        if not matches.empty:
+            return matches.iloc[0]
+
+    return monitoring_locations_frame.iloc[0]
+
+
+def _extract_decimal_coordinate(value, axis):
+    """Extract a latitude or longitude value from a geometry-like object."""
+    if value is None:
+        return None
+
+    coord = getattr(value, "y" if axis == "lat" else "x", None)
+    if coord is not None:
+        return coord
+
+    if hasattr(value, "__geo_interface__"):
+        coordinates = value.__geo_interface__.get("coordinates")
+        if coordinates and len(coordinates) >= 2:
+            return coordinates[1] if axis == "lat" else coordinates[0]
+
+    return None
+
+
+def _monitoring_location_coordinate(row, axis):
+    """Return a latitude or longitude from raw monitoring-location values."""
+    if row is None:
+        return None
+
+    raw_column_names = {
+        "lat": ("latitude", "dec_lat_va"),
+        "lon": ("longitude", "dec_long_va"),
+    }
+    for column_name in raw_column_names[axis]:
+        value = _row_value(row, column_name)
+        if value is not None:
+            return value
+
+    return _extract_decimal_coordinate(_row_value(row, "geometry"), axis)
+
+
+def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame):
     """Build the raw API-derived metadata mapping for the reduced CSV export."""
     frame_row = frame.iloc[0] if isinstance(frame, pd.DataFrame) and not frame.empty else None
     metadata_row = _select_matching_timeseries_metadata_row(frame, metadata_frame)
+    monitoring_location_id = _row_value(metadata_row, "monitoring_location_id") or _row_value(
+        frame_row, "monitoring_location_id"
+    )
+    monitoring_location_row = _select_matching_monitoring_location_row(
+        monitoring_location_id,
+        monitoring_locations_frame,
+    )
     return {
-        "TS_ID": _row_value(frame_row, "time_series_id") or _row_value(metadata_row, "time_series_id"),
+        "TS_ID": _row_value(frame_row, "time_series_id")
+        or _row_value(metadata_row, "time_series_id"),
         "Parameter": _row_value(frame_row, "parameter_code")
         or _row_value(metadata_row, "parameter_code"),
         "Statistic": _row_value(frame_row, "statistic_id")
         or _row_value(metadata_row, "statistic_id"),
         "IV_TS_ID": _row_value(metadata_row, "parent_time_series_id"),
         "Description": _row_value(metadata_row, "parameter_description"),
-        "site_no": _row_value(metadata_row, "monitoring_location_id")
-        or _row_value(frame_row, "monitoring_location_id"),
+        "site_no": monitoring_location_id,
+        "Site number": _row_value(monitoring_location_row, "monitoring_location_number"),
+        "Station name": _row_value(monitoring_location_row, "monitoring_location_name"),
+        "Latitude": _monitoring_location_coordinate(monitoring_location_row, "lat"),
+        "Longitude": _monitoring_location_coordinate(monitoring_location_row, "lon"),
+        "HUC code": _row_value(monitoring_location_row, "hydrologic_unit_code"),
+        "Drainage area": _row_value(monitoring_location_row, "drainage_area"),
     }
 
 
@@ -112,6 +177,7 @@ def get_usgs_timeseries(
 
     metadata_dict = metadata if isinstance(metadata, dict) else vars(metadata).copy()
     timeseries_metadata_frame = None
+    monitoring_locations_frame = None
     csv_header_metadata = None
     if workflow_type in {"discharge", "gw_daily"} and hasattr(
         waterdata_module, "get_time_series_metadata"
@@ -121,7 +187,19 @@ def get_usgs_timeseries(
             monitoring_location_id=monitoring_location_id,
             parameter_code=effective_parameter_code,
         )
-        csv_header_metadata = _build_csv_header_metadata(frame, timeseries_metadata_frame)
+    if workflow_type in {"discharge", "gw_daily"} and hasattr(
+        waterdata_module, "get_monitoring_locations"
+    ):
+        monitoring_locations_frame, _ = _call_waterdata_with_filtered_datetime_warning(
+            waterdata_module.get_monitoring_locations,
+            monitoring_location_id=monitoring_location_id,
+        )
+    if workflow_type in {"discharge", "gw_daily"}:
+        csv_header_metadata = _build_csv_header_metadata(
+            frame,
+            timeseries_metadata_frame,
+            monitoring_locations_frame,
+        )
 
     frame = frame.reset_index(drop=True).copy()
     frame["station_id"] = station_id

@@ -57,31 +57,45 @@ def _load_geopandas():
 
 
 def _to_station_geodataframe(frame):
-    """Convert a normalized station frame into an EPSG:4326 GeoDataFrame."""
+    """Convert a filtered raw station frame into an EPSG:4326 GeoDataFrame."""
     gpd = _load_geopandas()
     station_frame = frame.copy()
-
-    station_frame["dec_long_va"] = pd.to_numeric(
-        station_frame.get("dec_long_va"), errors="coerce"
-    )
-    station_frame["dec_lat_va"] = pd.to_numeric(
-        station_frame.get("dec_lat_va"), errors="coerce"
-    )
 
     existing_geometry = station_frame.get("geometry")
     if existing_geometry is not None and existing_geometry.notna().any():
         geometry = gpd.GeoSeries(existing_geometry, index=station_frame.index, crs="EPSG:4326")
         station_frame = station_frame.drop(columns=["geometry"])
     else:
+        longitude_column = None
+        latitude_column = None
+        if "longitude" in station_frame.columns and "latitude" in station_frame.columns:
+            longitude_column = "longitude"
+            latitude_column = "latitude"
+        elif "dec_long_va" in station_frame.columns and "dec_lat_va" in station_frame.columns:
+            longitude_column = "dec_long_va"
+            latitude_column = "dec_lat_va"
+
         geometry_values = pd.Series([None] * len(station_frame), index=station_frame.index)
-        valid_geometry = (
-            station_frame["dec_long_va"].notna() & station_frame["dec_lat_va"].notna()
-        )
+        if longitude_column is None or latitude_column is None:
+            valid_geometry = pd.Series([False] * len(station_frame), index=station_frame.index)
+            longitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
+            latitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
+        else:
+            longitude_values = pd.to_numeric(
+                station_frame[longitude_column],
+                errors="coerce",
+            )
+            latitude_values = pd.to_numeric(
+                station_frame[latitude_column],
+                errors="coerce",
+            )
+            valid_geometry = longitude_values.notna() & latitude_values.notna()
+
         if valid_geometry.any():
             geometry_values.loc[valid_geometry] = list(
                 gpd.points_from_xy(
-                    station_frame.loc[valid_geometry, "dec_long_va"],
-                    station_frame.loc[valid_geometry, "dec_lat_va"],
+                    longitude_values.loc[valid_geometry],
+                    latitude_values.loc[valid_geometry],
                 )
             )
         geometry = gpd.GeoSeries(geometry_values, index=station_frame.index, crs="EPSG:4326")
@@ -90,74 +104,14 @@ def _to_station_geodataframe(frame):
 
 
 def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
-    """Reshape discovered stations into the legacy-style preview columns."""
+    """Filter discovered stations while preserving the raw monitoring-location schema."""
     candidate_ids = set(candidate_frame["monitoring_location_id"])
     qualifying_ids = set(qualifying_frame["monitoring_location_id"])
     frame = candidate_frame[
         candidate_frame["monitoring_location_id"].isin(candidate_ids & qualifying_ids)
     ].copy()
-    frame["workflow_type"] = workflow_type
     frame = frame.drop_duplicates(subset=["monitoring_location_id"])
     frame = frame.sort_values("monitoring_location_id").reset_index(drop=True)
-
-    if frame.empty and "workflow_type" not in frame.columns:
-        frame["workflow_type"] = pd.Series(dtype="object")
-
-    if "site_no" not in frame.columns:
-        if "monitoring_location_number" in frame.columns:
-            frame["site_no"] = frame["monitoring_location_number"]
-        elif "monitoring_location_id" in frame.columns:
-            frame["site_no"] = frame["monitoring_location_id"].astype(str).str.replace(
-                r"^USGS-", "", regex=True
-            )
-        else:
-            frame["site_no"] = pd.Series(dtype="object")
-
-    if "station_nm" not in frame.columns:
-        if "monitoring_location_name" in frame.columns:
-            frame["station_nm"] = frame["monitoring_location_name"]
-        elif "location_name" in frame.columns:
-            frame["station_nm"] = frame["location_name"]
-        else:
-            frame["station_nm"] = pd.Series(dtype="object")
-
-    if "site_tp_cd" not in frame.columns:
-        if "site_type_code" in frame.columns:
-            frame["site_tp_cd"] = frame["site_type_code"]
-        else:
-            frame["site_tp_cd"] = pd.Series(dtype="object")
-
-    if "dec_lat_va" not in frame.columns:
-        if "latitude" in frame.columns:
-            frame["dec_lat_va"] = frame["latitude"]
-        elif "geometry" in frame.columns:
-            frame["dec_lat_va"] = frame["geometry"].map(
-                lambda value: _extract_decimal_coordinate(value, "lat")
-            )
-        else:
-            frame["dec_lat_va"] = pd.Series([pd.NA] * len(frame), dtype="object")
-
-    if "dec_long_va" not in frame.columns:
-        if "longitude" in frame.columns:
-            frame["dec_long_va"] = frame["longitude"]
-        elif "geometry" in frame.columns:
-            frame["dec_long_va"] = frame["geometry"].map(
-                lambda value: _extract_decimal_coordinate(value, "lon")
-            )
-        else:
-            frame["dec_long_va"] = pd.Series([pd.NA] * len(frame), dtype="object")
-
-    if "state_cd" not in frame.columns:
-        if "state_code" in frame.columns:
-            frame["state_cd"] = frame["state_code"]
-        else:
-            frame["state_cd"] = pd.Series(dtype="object")
-
-    if "county_cd" not in frame.columns:
-        if "county_code" in frame.columns:
-            frame["county_cd"] = frame["county_code"]
-        else:
-            frame["county_cd"] = pd.Series(dtype="object")
 
     return _to_station_geodataframe(frame)
 
