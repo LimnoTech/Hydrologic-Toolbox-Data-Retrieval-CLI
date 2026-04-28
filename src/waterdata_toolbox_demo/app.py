@@ -13,13 +13,6 @@ def run_cli(argv: Sequence[str]) -> int:
     return cli_main(argv)
 
 
-def run_gui() -> int:
-    """Run the desktop GUI."""
-    from waterdata_toolbox_demo.gui import run_gui as gui_main
-
-    return gui_main()
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """Route the packaged app through the CLI and show help on empty args."""
     args = list(sys.argv[1:] if argv is None else argv)
