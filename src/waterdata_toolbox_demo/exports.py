@@ -17,6 +17,12 @@ _RAW_CSV_HEADER_FIELDS = [
     "Statistic",
     "TS_ID",
     "IV_TS_ID",
+    "Site number",
+    "Station name",
+    "Latitude",
+    "Longitude",
+    "HUC code",
+    "Drainage area",
 ]
 
 _REDUCED_CSV_COLUMN_NAMES = {
@@ -26,30 +32,10 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "qualifier": "Qualifier",
 }
 
-_STATION_SHAPEFILE_FIELDS = {
-    "site_no": "site_no",
-    "monitoring_location_id": "loc_id",
-    "station_nm": "stn_name",
-    "site_tp_cd": "site_tp",
-    "state_cd": "state_cd",
-    "county_cd": "county_cd",
-    "dec_lat_va": "lat",
-    "dec_long_va": "lon",
-    "agency_code": "agency_cd",
-    "hydrologic_unit_code": "huc_code",
-}
-
-_STATION_SHAPEFILE_FIELD_SPECS = {
-    "site_no": ("C", 20, 0),
-    "loc_id": ("C", 40, 0),
-    "stn_name": ("C", 100, 0),
-    "site_tp": ("C", 12, 0),
-    "state_cd": ("C", 10, 0),
-    "county_cd": ("C", 10, 0),
-    "lat": ("F", 18, 8),
-    "lon": ("F", 18, 8),
-    "agency_cd": ("C", 12, 0),
-    "huc_code": ("C", 20, 0),
+_STATION_SHAPEFILE_EXCLUDED_FIELDS = {
+    "geometry",
+    "workflow_type",
+    "geometry_type",
 }
 
 _WGS84_PRJ = (
@@ -136,39 +122,132 @@ def export_station_artifacts(frame, output_dir, file_stem):
     return {"csv": csv_path}
 
 
-def _reduce_station_shapefile_frame(frame):
-    """Return the reduced, shapefile-safe station schema plus geometry."""
-    if not isinstance(frame, gpd.GeoDataFrame):
-        raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
-
-    reduced_frame = frame.copy()
-    for source_column in _STATION_SHAPEFILE_FIELDS:
-        if source_column not in reduced_frame.columns:
-            reduced_frame[source_column] = pd.NA
-
-    reduced_frame = reduced_frame[
-        list(_STATION_SHAPEFILE_FIELDS) + ["geometry"]
-    ].rename(columns=_STATION_SHAPEFILE_FIELDS)
-    return gpd.GeoDataFrame(reduced_frame, geometry="geometry", crs=frame.crs or "EPSG:4326")
+def _dbf_text_value(value):
+    """Return a DBF-safe string value."""
+    safe_value = _csv_safe_value(value)
+    return "" if safe_value == "" else str(safe_value)
 
 
-def _dbf_safe_value(value):
-    """Return a DBF-safe scalar value."""
+def _dbf_safe_value(value, field_type):
+    """Return a DBF-safe scalar value for one shapefile field type."""
     if value is None:
-        return ""
+        return "" if field_type == "C" else None
 
     try:
         if pd.isna(value):
-            return ""
+            return "" if field_type == "C" else None
     except Exception:
         pass
 
     if hasattr(value, "item"):
         try:
-            return value.item()
+            value = value.item()
         except Exception:
             pass
+
+    if field_type == "C":
+        return _dbf_text_value(value)
+    if field_type == "L":
+        return bool(value) if value is not None else None
     return value
+
+
+def _raw_station_attribute_columns(frame):
+    """Return the raw station columns that should be written to the DBF table."""
+    return [
+        column_name
+        for column_name in frame.columns
+        if column_name not in _STATION_SHAPEFILE_EXCLUDED_FIELDS
+    ]
+
+
+def _truncate_shapefile_field_names(column_names):
+    """Return a deterministic shapefile-safe field-name mapping."""
+    used_names = set()
+    field_name_map = {}
+
+    for column_name in column_names:
+        if len(column_name) <= 10 and column_name not in used_names:
+            field_name_map[column_name] = column_name
+            used_names.add(column_name)
+            continue
+
+        candidate = column_name[:10]
+        if candidate not in used_names:
+            field_name_map[column_name] = candidate
+            used_names.add(candidate)
+            continue
+
+        suffix_index = 1
+        while True:
+            suffix = f"_{suffix_index}"
+            base_length = 10 - len(suffix)
+            candidate = f"{column_name[:base_length]}{suffix}"
+            if candidate not in used_names:
+                field_name_map[column_name] = candidate
+                used_names.add(candidate)
+                break
+            suffix_index += 1
+
+    return field_name_map
+
+
+def _series_is_boolean_like(series):
+    """Return True when a series contains only boolean-like values."""
+    if pd.api.types.is_bool_dtype(series):
+        return True
+
+    non_null = series.dropna()
+    if non_null.empty:
+        return False
+
+    for value in non_null:
+        if hasattr(value, "item"):
+            try:
+                value = value.item()
+            except Exception:
+                pass
+        if not isinstance(value, bool):
+            return False
+    return True
+
+
+def _infer_shapefile_field_spec(series):
+    """Return a pyshp field spec for one raw station column."""
+    if _series_is_boolean_like(series):
+        return ("L", 1, 0)
+
+    if pd.api.types.is_integer_dtype(series):
+        return ("N", 18, 0)
+
+    if pd.api.types.is_float_dtype(series):
+        return ("F", 18, 8)
+
+    if pd.api.types.is_datetime64_any_dtype(series):
+        max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+        return ("C", min(max(max_length, 1), 254), 0)
+
+    max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+    return ("C", min(max(max_length, 1), 254), 0)
+
+
+def _station_shapefile_field_specs(frame):
+    """Return the raw-column to shapefile-field spec mapping for station export."""
+    attribute_columns = _raw_station_attribute_columns(frame)
+    field_name_map = _truncate_shapefile_field_names(attribute_columns)
+    field_specs = []
+    for column_name in attribute_columns:
+        field_type, field_size, field_decimal = _infer_shapefile_field_spec(frame[column_name])
+        field_specs.append(
+            {
+                "source_name": column_name,
+                "field_name": field_name_map[column_name],
+                "field_type": field_type,
+                "field_size": field_size,
+                "field_decimal": field_decimal,
+            }
+        )
+    return field_specs
 
 
 def _geometry_xy(value):
@@ -190,12 +269,18 @@ def _geometry_xy(value):
 
 
 def _write_station_shapefile(writer_path, frame):
-    """Write the reduced point shapefile payload using a pure-Python writer."""
+    """Write the rawer point shapefile payload using a pure-Python writer."""
     writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
     writer.autoBalance = 1
+    field_specs = _station_shapefile_field_specs(frame)
 
-    for field_name, (field_type, field_size, field_decimal) in _STATION_SHAPEFILE_FIELD_SPECS.items():
-        writer.field(field_name, field_type, size=field_size, decimal=field_decimal)
+    for spec in field_specs:
+        writer.field(
+            spec["field_name"],
+            spec["field_type"],
+            size=spec["field_size"],
+            decimal=spec["field_decimal"],
+        )
 
     for row in frame.itertuples(index=False):
         row_mapping = row._asdict()
@@ -203,8 +288,8 @@ def _write_station_shapefile(writer_path, frame):
         writer.point(x_coord, y_coord)
         writer.record(
             *[
-                _dbf_safe_value(row_mapping[field_name])
-                for field_name in _STATION_SHAPEFILE_FIELD_SPECS
+                _dbf_safe_value(row_mapping[spec["source_name"]], spec["field_type"])
+                for spec in field_specs
             ]
         )
 
@@ -218,11 +303,13 @@ def _write_station_shapefile_sidecars(shapefile_path):
 
 
 def export_station_shapefile_artifacts(frame, output_dir, file_stem):
-    """Write a reduced-schema station shapefile and return the `.shp` path."""
+    """Write a shapefile with raw monitoring-location attributes and return the `.shp` path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     shapefile_path = output_dir / f"{file_stem}.shp"
-    export_frame = _reduce_station_shapefile_frame(frame)
+    if not isinstance(frame, gpd.GeoDataFrame):
+        raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
+    export_frame = gpd.GeoDataFrame(frame.copy(), geometry="geometry", crs=frame.crs or "EPSG:4326")
     _write_station_shapefile(shapefile_path, export_frame)
     _write_station_shapefile_sidecars(shapefile_path)
     return {"shp": shapefile_path}
