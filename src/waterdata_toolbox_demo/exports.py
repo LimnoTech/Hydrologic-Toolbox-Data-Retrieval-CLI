@@ -1,5 +1,3 @@
-"""Artifact export helpers for CSV-only app workflows."""
-
 from __future__ import annotations
 
 import csv
@@ -31,12 +29,48 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
 }
-
-_STATION_SHAPEFILE_EXCLUDED_FIELDS = {
-    "geometry",
-    "workflow_type",
-    "geometry_type",
-}
+#https://api.waterdata.usgs.gov/docs/ogcapi/migration/
+_STATION_SHAPEFILE_CROSSWALK = [
+    {"source_name": "agency_code", "nwis_name": "agency_cd"},
+    {"source_name": "monitoring_location_number", "nwis_name": "site_no"},
+    {"source_name": "monitoring_location_name", "nwis_name": "station_nm"},
+    {"source_name": "site_type_code", "nwis_name": "site_tp_cd"},
+    {"source_name": "geometry", "nwis_name": "dec_lat_va", "derived_axis": "lat"},
+    {"source_name": "geometry", "nwis_name": "dec_long_va", "derived_axis": "lon"},
+    {
+        "source_name": "horizontal_position_method_code",
+        "nwis_name": "coord_meth_cd",
+    },
+    {
+        "source_name": "horizontal_positional_accuracy",
+        "nwis_name": "coord_acy_cd",
+    },
+    {"source_name": "original_horizontal_datum", "nwis_name": "coord_datum_cd"},
+    {"source_name": "district_code", "nwis_name": "district_cd"},
+    {"source_name": "state_code", "nwis_name": "state_cd"},
+    {"source_name": "county_code", "nwis_name": "county_cd"},
+    {"source_name": "country_code", "nwis_name": "country_cd"},
+    {"source_name": "altitude", "nwis_name": "alt_va"},
+    {"source_name": "altitude_method_code", "nwis_name": "alt_meth_cd"},
+    {"source_name": "altitude_accuracy", "nwis_name": "alt_acy_va"},
+    {"source_name": "vertical_datum", "nwis_name": "alt_datum_cd"},
+    {"source_name": "hydrologic_unit_code", "nwis_name": "huc_cd"},
+    {"source_name": "basin_code", "nwis_name": "basin_cd"},
+    {"source_name": "construction_date", "nwis_name": "construction_dt"},
+    {"source_name": "drainage_area", "nwis_name": "drain_area_va"},
+    {
+        "source_name": "contributing_drainage_area",
+        "nwis_name": "contrib_drain_area_va",
+    },
+    {"source_name": "time_zone_abbreviation", "nwis_name": "tz_cd"},
+    {"source_name": "uses_daylight_savings", "nwis_name": "local_time_fg"},
+    {"source_name": "national_aquifer_code", "nwis_name": "nat_aqfr_cd"},
+    {"source_name": "aquifer_code", "nwis_name": "aqfr_cd"},
+    {"source_name": "aquifer_type_code", "nwis_name": "aqfr_type_cd"},
+    {"source_name": "well_constructed_depth", "nwis_name": "well_depth_va"},
+    {"source_name": "hole_constructed_depth", "nwis_name": "hole_depth_va"},
+    {"source_name": "depth_source_code", "nwis_name": "depth_src_cd"},
+]
 
 _WGS84_PRJ = (
     'GEOGCS["WGS 84",DATUM["WGS_1984",'
@@ -152,44 +186,48 @@ def _dbf_safe_value(value, field_type):
     return value
 
 
-def _raw_station_attribute_columns(frame):
-    """Return the raw station columns that should be written to the DBF table."""
-    return [
-        column_name
-        for column_name in frame.columns
-        if column_name not in _STATION_SHAPEFILE_EXCLUDED_FIELDS
-    ]
-
-
-def _truncate_shapefile_field_names(column_names):
-    """Return a deterministic shapefile-safe field-name mapping."""
-    used_names = set()
-    field_name_map = {}
-
-    for column_name in column_names:
-        if len(column_name) <= 10 and column_name not in used_names:
-            field_name_map[column_name] = column_name
-            used_names.add(column_name)
+def _selected_station_shapefile_entries(frame):
+    """Return the ordered shapefile export entries that are available on the frame."""
+    selected_entries = []
+    for entry in _STATION_SHAPEFILE_CROSSWALK:
+        if entry["source_name"] == "geometry":
+            selected_entries.append(entry)
             continue
+        if entry["source_name"] in frame.columns:
+            selected_entries.append(entry)
+    return selected_entries
 
-        candidate = column_name[:10]
-        if candidate not in used_names:
-            field_name_map[column_name] = candidate
-            used_names.add(candidate)
-            continue
 
-        suffix_index = 1
-        while True:
-            suffix = f"_{suffix_index}"
-            base_length = 10 - len(suffix)
-            candidate = f"{column_name[:base_length]}{suffix}"
-            if candidate not in used_names:
-                field_name_map[column_name] = candidate
-                used_names.add(candidate)
-                break
-            suffix_index += 1
+def _shapefile_field_name_from_nwis_name(nwis_name):
+    """Return the 10-character DBF field name derived from one NWIS alias."""
+    return nwis_name[:10]
 
-    return field_name_map
+
+def _validated_station_shapefile_field_names(entries):
+    """Return NWIS-derived field names or raise if truncation causes a collision."""
+    field_names = {}
+    collisions = {}
+
+    for entry in entries:
+        field_name = _shapefile_field_name_from_nwis_name(entry["nwis_name"])
+        field_names.setdefault(field_name, []).append(entry)
+
+    collisions = {
+        field_name: items for field_name, items in field_names.items() if len(items) > 1
+    }
+    if collisions:
+        details = "; ".join(
+            f"{field_name} <- {', '.join(item['nwis_name'] for item in items)}"
+            for field_name, items in collisions.items()
+        )
+        raise ValueError(
+            "NWIS aliases collide after 10-character truncation: " + details
+        )
+
+    return {
+        entry["nwis_name"]: _shapefile_field_name_from_nwis_name(entry["nwis_name"])
+        for entry in entries
+    }
 
 
 def _series_is_boolean_like(series):
@@ -231,20 +269,38 @@ def _infer_shapefile_field_spec(series):
     return ("C", min(max(max_length, 1), 254), 0)
 
 
+def _geometry_decimal_coordinate(value, axis):
+    """Return one decimal coordinate derived from point geometry."""
+    x_coord, y_coord = _geometry_xy(value)
+    return y_coord if axis == "lat" else x_coord
+
+
+def _station_shapefile_series(frame, entry):
+    """Return the series used to infer DBF type information for one entry."""
+    if entry["source_name"] == "geometry":
+        return frame["geometry"].map(
+            lambda value: _geometry_decimal_coordinate(value, entry["derived_axis"])
+        )
+    return frame[entry["source_name"]]
+
+
 def _station_shapefile_field_specs(frame):
-    """Return the raw-column to shapefile-field spec mapping for station export."""
-    attribute_columns = _raw_station_attribute_columns(frame)
-    field_name_map = _truncate_shapefile_field_names(attribute_columns)
+    """Return the crosswalk-driven shapefile field spec mapping for station export."""
+    entries = _selected_station_shapefile_entries(frame)
+    field_name_map = _validated_station_shapefile_field_names(entries)
     field_specs = []
-    for column_name in attribute_columns:
-        field_type, field_size, field_decimal = _infer_shapefile_field_spec(frame[column_name])
+    for entry in entries:
+        field_series = _station_shapefile_series(frame, entry)
+        field_type, field_size, field_decimal = _infer_shapefile_field_spec(field_series)
         field_specs.append(
             {
-                "source_name": column_name,
-                "field_name": field_name_map[column_name],
+                "source_name": entry["source_name"],
+                "nwis_name": entry["nwis_name"],
+                "field_name": field_name_map[entry["nwis_name"]],
                 "field_type": field_type,
                 "field_size": field_size,
                 "field_decimal": field_decimal,
+                "derived_axis": entry.get("derived_axis"),
             }
         )
     return field_specs
@@ -268,11 +324,21 @@ def _geometry_xy(value):
     raise ValueError("Station shapefile export requires point geometry for every row.")
 
 
+def _station_shapefile_value(row_mapping, spec):
+    """Return one exported DBF value for a station row and crosswalked field spec."""
+    if spec["source_name"] == "geometry":
+        return _geometry_decimal_coordinate(
+            row_mapping["geometry"],
+            spec["derived_axis"],
+        )
+    return row_mapping.get(spec["source_name"])
+
+
 def _write_station_shapefile(writer_path, frame):
-    """Write the rawer point shapefile payload using a pure-Python writer."""
+    """Write the NWIS-crosswalk point shapefile payload using a pure-Python writer."""
+    field_specs = _station_shapefile_field_specs(frame)
     writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
     writer.autoBalance = 1
-    field_specs = _station_shapefile_field_specs(frame)
 
     for spec in field_specs:
         writer.field(
@@ -288,7 +354,7 @@ def _write_station_shapefile(writer_path, frame):
         writer.point(x_coord, y_coord)
         writer.record(
             *[
-                _dbf_safe_value(row_mapping[spec["source_name"]], spec["field_type"])
+                _dbf_safe_value(_station_shapefile_value(row_mapping, spec), spec["field_type"])
                 for spec in field_specs
             ]
         )
@@ -303,7 +369,7 @@ def _write_station_shapefile_sidecars(shapefile_path):
 
 
 def export_station_shapefile_artifacts(frame, output_dir, file_stem):
-    """Write a shapefile with raw monitoring-location attributes and return the `.shp` path."""
+    """Write a shapefile with NWIS-crosswalk monitoring-location attributes and return the `.shp` path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     shapefile_path = output_dir / f"{file_stem}.shp"

@@ -80,7 +80,7 @@ Each shapefile also writes the normal sidecar files:
 - `.prj`
 - `.cpg`
 
-The shapefile field list is intentionally reduced. See [docs/create-new-project-shapefile-fields.md](docs/create-new-project-shapefile-fields.md).
+The shapefile DBF uses legacy NWIS field names from a code-local crosswalk. See (https://api.waterdata.usgs.gov/docs/ogcapi/migration/)
 
 ## Add Data
 
@@ -115,6 +115,3 @@ dist\outputs\data_smoke\discharge_02225500.csv
 - the packaged executable does not launch the GUI
 - the GUI code still exists in the repo for development/reference purposes
 
-## More Detail
-
-Deeper package-oriented notes live in [src/waterdata_toolbox_demo/waterdata-package-cli-gui.md](src/waterdata_toolbox_demo/waterdata-package-cli-gui.md).
