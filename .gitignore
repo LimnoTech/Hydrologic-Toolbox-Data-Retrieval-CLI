@@ -17,3 +17,6 @@ dist/.DS_Store
 README.md
 
 
+pixi.lock
+pixi.toml
+pixi.lock

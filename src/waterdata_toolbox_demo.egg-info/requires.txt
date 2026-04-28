@@ -1,6 +1,7 @@
 dataretrieval
 pandas
 geopandas
+pyshp
 
 [build]
 pyinstaller
