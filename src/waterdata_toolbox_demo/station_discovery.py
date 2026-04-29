@@ -28,23 +28,6 @@ def _call_station_discovery_with_filtered_datetime_warning(function, **kwargs):
         return function(**kwargs)
 
 
-def _extract_decimal_coordinate(value, axis):
-    """Extract a latitude or longitude value from coordinate-like objects."""
-    if value is None:
-        return pd.NA
-
-    coord = getattr(value, "y" if axis == "lat" else "x", None)
-    if coord is not None:
-        return coord
-
-    if hasattr(value, "__geo_interface__"):
-        coordinates = value.__geo_interface__.get("coordinates")
-        if coordinates and len(coordinates) >= 2:
-            return coordinates[1] if axis == "lat" else coordinates[0]
-
-    return pd.NA
-
-
 def _load_geopandas():
     """Import GeoPandas only when the discovery workflow needs it."""
     try:
@@ -158,21 +141,6 @@ def _get_station_discovery_frames(bbox, workflow_type, waterdata_module):
         workflow_type,
     )
     return candidate_frame, qualifying_frame, normalized_frame
-
-
-def get_usgs_stations_in_bbox(bbox, workflow_types, waterdata_module=None):
-    """Return workflow-keyed station discovery frames for the create-project step."""
-    if waterdata_module is None:
-        from dataretrieval import waterdata as waterdata_module
-
-    results = {}
-    for workflow_type in workflow_types:
-        results[workflow_type] = _get_station_discovery_frames(
-            bbox,
-            workflow_type,
-            waterdata_module,
-        )[2]
-    return results
 
 
 def run_create_new_project_section(

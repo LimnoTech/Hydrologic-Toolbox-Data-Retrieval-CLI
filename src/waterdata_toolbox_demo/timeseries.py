@@ -113,6 +113,29 @@ def _monitoring_location_coordinate(row, axis):
     return _extract_decimal_coordinate(_row_value(row, "geometry"), axis)
 
 
+def _monitoring_location_geometry(row):
+    """Return one geometry value serialized as raw coordinates when possible."""
+    geometry = _row_value(row, "geometry")
+    if geometry is None:
+        return None
+
+    longitude = _extract_decimal_coordinate(geometry, "lon")
+    latitude = _extract_decimal_coordinate(geometry, "lat")
+    if longitude is not None and latitude is not None:
+        return (longitude, latitude)
+
+    return geometry
+
+
+def _set_header_value(mapping, key, value):
+    """Set one header value only when it is meaningfully present."""
+    if value is None:
+        return
+    if isinstance(value, str) and value == "":
+        return
+    mapping[key] = value
+
+
 def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame):
     """Build the raw API-derived metadata mapping for the reduced CSV export."""
     frame_row = frame.iloc[0] if isinstance(frame, pd.DataFrame) and not frame.empty else None
@@ -141,6 +164,138 @@ def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame
         "HUC code": _row_value(monitoring_location_row, "hydrologic_unit_code"),
         "Drainage area": _row_value(monitoring_location_row, "drainage_area"),
     }
+
+
+def _build_periodic_csv_header_metadata(monitoring_location_id, monitoring_locations_frame):
+    """Build the modern Water Data metadata mapping for the periodic CSV export."""
+    monitoring_location_row = _select_matching_monitoring_location_row(
+        monitoring_location_id,
+        monitoring_locations_frame,
+    )
+    header_metadata = {}
+
+    _set_header_value(header_metadata, "monitoring_location_id", monitoring_location_id)
+    _set_header_value(
+        header_metadata,
+        "monitoring_location_number",
+        _row_value(monitoring_location_row, "monitoring_location_number"),
+    )
+    _set_header_value(
+        header_metadata,
+        "monitoring_location_name",
+        _row_value(monitoring_location_row, "monitoring_location_name"),
+    )
+    _set_header_value(
+        header_metadata,
+        "site_type_code",
+        _row_value(monitoring_location_row, "site_type_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "geometry",
+        _monitoring_location_geometry(monitoring_location_row),
+    )
+    _set_header_value(
+        header_metadata,
+        "hydrologic_unit_code",
+        _row_value(monitoring_location_row, "hydrologic_unit_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "altitude",
+        _row_value(monitoring_location_row, "altitude"),
+    )
+    _set_header_value(
+        header_metadata,
+        "altitude_method_code",
+        _row_value(monitoring_location_row, "altitude_method_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "altitude_accuracy",
+        _row_value(monitoring_location_row, "altitude_accuracy"),
+    )
+    _set_header_value(
+        header_metadata,
+        "vertical_datum",
+        _row_value(monitoring_location_row, "vertical_datum"),
+    )
+    _set_header_value(
+        header_metadata,
+        "district_code",
+        _row_value(monitoring_location_row, "district_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "state_code",
+        _row_value(monitoring_location_row, "state_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "county_code",
+        _row_value(monitoring_location_row, "county_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "country_code",
+        _row_value(monitoring_location_row, "country_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "time_zone_abbreviation",
+        _row_value(monitoring_location_row, "time_zone_abbreviation"),
+    )
+    _set_header_value(
+        header_metadata,
+        "uses_daylight_savings",
+        _row_value(monitoring_location_row, "uses_daylight_savings"),
+    )
+    _set_header_value(
+        header_metadata,
+        "construction_date",
+        _row_value(monitoring_location_row, "construction_date"),
+    )
+    _set_header_value(
+        header_metadata,
+        "drainage_area",
+        _row_value(monitoring_location_row, "drainage_area"),
+    )
+    _set_header_value(
+        header_metadata,
+        "contributing_drainage_area",
+        _row_value(monitoring_location_row, "contributing_drainage_area"),
+    )
+    _set_header_value(
+        header_metadata,
+        "national_aquifer_code",
+        _row_value(monitoring_location_row, "national_aquifer_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "aquifer_code",
+        _row_value(monitoring_location_row, "aquifer_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "aquifer_type_code",
+        _row_value(monitoring_location_row, "aquifer_type_code"),
+    )
+    _set_header_value(
+        header_metadata,
+        "well_constructed_depth",
+        _row_value(monitoring_location_row, "well_constructed_depth"),
+    )
+    _set_header_value(
+        header_metadata,
+        "hole_constructed_depth",
+        _row_value(monitoring_location_row, "hole_constructed_depth"),
+    )
+    _set_header_value(
+        header_metadata,
+        "depth_source_code",
+        _row_value(monitoring_location_row, "depth_source_code"),
+    )
+    return header_metadata
 
 
 def get_usgs_timeseries(
@@ -187,7 +342,7 @@ def get_usgs_timeseries(
             monitoring_location_id=monitoring_location_id,
             parameter_code=effective_parameter_code,
         )
-    if workflow_type in {"discharge", "gw_daily"} and hasattr(
+    if workflow_type in {"discharge", "gw_daily", "gw_periodic"} and hasattr(
         waterdata_module, "get_monitoring_locations"
     ):
         monitoring_locations_frame, _ = _call_waterdata_with_filtered_datetime_warning(
@@ -200,8 +355,14 @@ def get_usgs_timeseries(
             timeseries_metadata_frame,
             monitoring_locations_frame,
         )
+    elif workflow_type == "gw_periodic":
+        csv_header_metadata = _build_periodic_csv_header_metadata(
+            monitoring_location_id,
+            monitoring_locations_frame,
+        )
 
     frame = frame.reset_index(drop=True).copy()
+ 
     frame["station_id"] = station_id
     frame["workflow_type"] = workflow_type
 
@@ -225,36 +386,3 @@ def get_usgs_timeseries(
         "metadata": metadata_dict,
     }
 
-
-def run_add_data_to_project_section(
-    example_stations,
-    output_dir,
-    date_range,
-    waterdata_module=None,
-):
-    """Run the legacy add-data demo section for each configured workflow type."""
-    results = {}
-    for workflow_type, example in example_stations.items():
-        try:
-            payload = get_usgs_timeseries(
-                example["station_id"],
-                workflow_type,
-                output_dir,
-                parameter_code=example.get("parameter_code"),
-                date_range=date_range,
-                waterdata_module=waterdata_module,
-            )
-        except Exception as exc:
-            results[workflow_type] = {
-                "payload": None,
-                "error": str(exc),
-                "artifact_messages": [],
-            }
-            continue
-
-        results[workflow_type] = {
-            "payload": payload,
-            "error": None,
-            "artifact_messages": format_artifact_messages(payload["files"]),
-        }
-    return results

@@ -29,6 +29,24 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "approval_status": "Approval status",
     "qualifier": "Qualifier",
 }
+
+_PERIODIC_CSV_BODY_PREFERRED_COLUMNS = [
+    "time",
+    "value",
+    "vertical_datum",
+    "approval_status",
+    "qualifier",
+    "measuring_agency",
+    "parameter_code",
+]
+
+_PERIODIC_CSV_EXCLUDED_COLUMNS = {
+    "monitoring_location_id",
+    "station_id",
+    "workflow_type",
+    "geometry",
+    "geometry_type",
+}
 #https://api.waterdata.usgs.gov/docs/ogcapi/migration/
 _STATION_SHAPEFILE_CROSSWALK = [
     {"source_name": "agency_code", "nwis_name": "agency_cd"},
@@ -142,17 +160,12 @@ def export_timeseries_artifacts(
     csv_path = output_dir / f"{workflow_type}_{station_id}.csv"
 
     export_frame = _prepare_frame_for_export(frame)
-    _write_timeseries_csv_artifact(csv_path, export_frame, csv_header_metadata=csv_header_metadata)
-    return {"csv": csv_path}
-
-
-def export_station_artifacts(frame, output_dir, file_stem):
-    """Write a normalized station CSV artifact and return its path."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = output_dir / f"{file_stem}.csv"
-    export_frame = _prepare_frame_for_export(frame)
-    export_frame.to_csv(csv_path, index=False)
+    _write_timeseries_csv_artifact(
+        csv_path,
+        export_frame,
+        workflow_type,
+        csv_header_metadata=csv_header_metadata,
+    )
     return {"csv": csv_path}
 
 
@@ -434,10 +447,66 @@ def _prepare_reduced_timeseries_csv_frame(frame):
     return reduced_frame
 
 
-def _write_timeseries_csv_artifact(csv_path, frame, csv_header_metadata=None):
+def _prepare_periodic_timeseries_csv_frame(frame):
+    """Return the periodic measurement table using only API-provided fields."""
+    if not isinstance(frame, pd.DataFrame):
+        return frame
+
+    periodic_frame = pd.DataFrame(frame.copy())
+    ordered_columns = [
+        column_name
+        for column_name in _PERIODIC_CSV_BODY_PREFERRED_COLUMNS
+        if column_name in periodic_frame.columns
+    ]
+    ordered_columns.extend(
+        column_name
+        for column_name in periodic_frame.columns
+        if column_name not in ordered_columns
+        and column_name not in _PERIODIC_CSV_EXCLUDED_COLUMNS
+    )
+    periodic_frame = periodic_frame[ordered_columns]
+    for column in periodic_frame.columns:
+        periodic_frame[column] = periodic_frame[column].map(_csv_safe_value)
+    return periodic_frame
+
+
+def _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata):
+    """Write the periodic CSV with a commented metadata block and body table."""
+    periodic_frame = _prepare_periodic_timeseries_csv_frame(frame)
+    header_fields = list(csv_header_metadata)
+    header_values = [_csv_safe_value(csv_header_metadata.get(key)) for key in header_fields]
+
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        handle.write(
+            "# "
+            + _format_csv_line(
+                header_fields,
+                field_names=header_fields,
+            )
+            + "\n"
+        )
+        handle.write(
+            "# "
+            + _format_csv_line(
+                header_values,
+                field_names=header_fields,
+            )
+            + "\n"
+        )
+        writer.writerow(periodic_frame.columns)
+        for row in periodic_frame.itertuples(index=False, name=None):
+            writer.writerow(row)
+
+
+def _write_timeseries_csv_artifact(csv_path, frame, workflow_type, csv_header_metadata=None):
     """Write either the legacy full-frame CSV or the new reduced raw-header CSV."""
     if csv_header_metadata is None:
         frame.to_csv(csv_path, index=False)
+        return
+
+    if workflow_type == "gw_periodic":
+        _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata)
         return
 
     reduced_frame = _prepare_reduced_timeseries_csv_frame(frame)

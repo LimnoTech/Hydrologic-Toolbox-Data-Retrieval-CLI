@@ -1,5 +1,5 @@
-# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID
-# USGS-02225500,"Discharge, cubic feet per second","00060","00003",447f21c4ac494d2a94d69c5079c557c4,5759fde33ad545e8881d4fffdcda371f
+# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID,Site number,Station name,Latitude,Longitude,HUC code,Drainage area
+# USGS-02225500,"Discharge, cubic feet per second","00060","00003",447f21c4ac494d2a94d69c5079c557c4,5759fde33ad545e8881d4fffdcda371f,02225500,"OHOOPEE RIVER NEAR REIDSVILLE, GA",32.0771388888889,-82.1765,03070107,1110.0
 Time,Daily values,Approval status,Qualifier
 1903-06-24,1740.0,Approved,
 1903-06-25,1830.0,Approved,
@@ -34132,3 +34132,5 @@ Time,Daily values,Approval status,Qualifier
 2026-04-24,61.9,Provisional,
 2026-04-25,58.5,Provisional,
 2026-04-26,55.4,Provisional,
+2026-04-27,53.1,Provisional,
+2026-04-28,51.1,Provisional,

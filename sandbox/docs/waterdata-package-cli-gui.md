@@ -11,19 +11,19 @@ This package now supports a CLI-only packaged app workflow.
 
 ## Create New Project
 
-Use one or more workflow flags:
+Use one or more `--wf` selections:
 
-- `--discharge`
-- `--daily`
-- `--periodic`
+- `--wf discharge`
+- `--wf daily`
+- `--wf periodic`
 
 Example:
 
 ```bash
 PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project \
   --bbox -82.859 31.899 -82.013 32.947 \
-  --discharge \
-  --daily \
+  --wf discharge \
+  --wf daily \
   --output-dir dist/outputs/project_smoke
 ```
 
@@ -44,17 +44,17 @@ The shapefile DBF uses NWIS-style field names from a code-local crosswalk rather
 
 ## Add Data
 
-Use exactly one workflow flag:
+Use one workflow positional argument:
 
-- `--discharge`
-- `--daily`
-- `--periodic`
+- `discharge`
+- `daily`
+- `periodic`
 
 Example:
 
 ```bash
 PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
-  --discharge \
+  discharge \
   --station-id 02225500 \
   --parameter-code 00060 \
   --output-dir dist/outputs/data_smoke

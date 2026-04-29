@@ -1,87 +1,63 @@
 Metadata-Version: 2.4
 Name: waterdata-toolbox-demo
 Version: 0.1.0
-Summary: CSV-only CLI and GUI app for Water Data ToolBox demo workflows.
+Summary: CLI-only app for Water Data ToolBox demo workflows.
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: dataretrieval
 Requires-Dist: pandas
 Requires-Dist: geopandas
+Requires-Dist: pyshp
 Provides-Extra: build
 Requires-Dist: pyinstaller; extra == "build"
 
-# Water Data ToolBox App
+# Water Data ToolBox `.exe`
 
-This package provides a CLI-only packaged app for the Water Data ToolBox workflows. The GUI code remains in the repo, but the packaged executable does not route into it.
+This repository packages a CLI-only Water Data ToolBox executable for Windows.
 
-## Local package runs
+## Run The CLI
 
-From the repo root, use the `src/` layout directly:
+Build the Windows app, then open PowerShell and either:
 
-```bash
-PYTHONPATH=src python -m waterdata_toolbox_demo --help
-PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project --discharge
-PYTHONPATH=src python -m waterdata_toolbox_demo add-data --discharge
+```powershell
+cd .\dist\waterdata_toolbox_demo
+.\waterdata_toolbox_demo.exe --help
 ```
 
-If you prefer an installed package workflow:
+or run it from the repo root:
 
-```bash
-pip install -e .
-python -m waterdata_toolbox_demo --help
-python -m waterdata_toolbox_demo create-new-project --discharge --daily
-python -m waterdata_toolbox_demo add-data --periodic
+```powershell
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --help
 ```
 
-## CLI examples
+## Commands
 
-Create New Project:
+These examples assume you are running from the repo root in PowerShell.
 
-```bash
-PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project \
-  --bbox -82.859 31.899 -82.013 32.947 \
-  --discharge \
-  --daily \
-  --output-dir outputs/usgs_waterdata_demo
-```
+| Command | Result |
+| --- | --- |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf discharge --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_discharge` | Writes the `discharge` shapefile set to the output folder. |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf discharge --wf gw_daily --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_multi` | Writes one shapefile set for each selected workflow. |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf gw_periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data discharge --station-id 02225500 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data gw_daily --station-id 324209082430201 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
+| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data gw_periodic --station-id 410947071344803 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` with a commented metadata header and a periodic measurement table. |
 
-Adding Data to Project:
+For `add-data`, the workflow name chooses the built-in USGS parameter automatically:
+- `discharge` -> `00060`
+- `gw_daily` -> `72019`
+- `gw_periodic` -> `72019`
 
-```bash
-PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
-  --periodic \
-  --station-id 410947071344803 \
-  --parameter-code 72019 \
-  --start-date 1880-01-01 \
-  --end-date 2100-01-01 \
-  --output-dir outputs/usgs_waterdata_demo
-```
+## Crosswalk Note
 
-## Outputs
+For shapefile attribute tables, the CLI maps raw Water Data field names to NWIS-style names first, then writes shapefile-safe field names from that mapping. The USGS migration guide is the reference for those aliases: [USGS Water Data migration guide](https://api.waterdata.usgs.gov/docs/ogcapi/migration/).
 
-- `add-data` writes one CSV artifact per run.
-- Daily workflows keep the custom metadata preamble:
-  - `# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID`
-  - `Time,Daily values,Approval status,Qualifier`
-- `create-new-project` writes one shapefile set per selected workflow:
-  - `discharge.shp`
-  - `daily.shp`
-  - `periodic.shp`
-- The shapefile schema is intentionally reduced for readability and format safety. See `docs/create-new-project-shapefile-fields.md`.
-
-## Windows app build
-
-Build the packaged Windows app on Windows, not macOS. From a Windows environment with the project checked out:
-
-```bash
-pip install -e .[build]
-pyinstaller waterdata_toolbox_demo.spec
-```
-
-The default build emits an `onedir` app for faster startup. Launch the packaged app from:
-
-```text
-dist/waterdata_toolbox_demo/waterdata_toolbox_demo.exe
-```
-
-Launching the packaged app with no arguments prints CLI help and exits.
+| Water Data field | NWIS-style name | Shapefile field |
+| --- | --- | --- |
+| `agency_code` | `agency_cd` | `agency_cd` |
+| `monitoring_location_number` | `site_no` | `site_no` |
+| `monitoring_location_name` | `station_nm` | `station_nm` |
+| `site_type_code` | `site_tp_cd` | `site_tp_cd` |
+| `hydrologic_unit_code` | `huc_cd` | `huc_cd` |
+| `drainage_area` | `drain_area_va` | `drain_area` |
+| `geometry` | `dec_lat_va` / `dec_long_va` | `dec_lat_va` / `dec_long_v` |
