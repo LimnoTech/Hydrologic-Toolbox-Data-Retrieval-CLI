@@ -31,7 +31,6 @@ _REDUCED_CSV_COLUMN_NAMES = {
 }
 
 _PERIODIC_CSV_BODY_PREFERRED_COLUMNS = [
-    "monitoring_location_id",
     "time",
     "value",
     "vertical_datum",
@@ -42,6 +41,7 @@ _PERIODIC_CSV_BODY_PREFERRED_COLUMNS = [
 ]
 
 _PERIODIC_CSV_EXCLUDED_COLUMNS = {
+    "monitoring_location_id",
     "station_id",
     "workflow_type",
     "geometry",
