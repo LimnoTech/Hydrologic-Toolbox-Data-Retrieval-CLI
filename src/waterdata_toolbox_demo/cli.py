@@ -45,7 +45,7 @@ def build_parser():
         nargs=4,
         type=float,
         metavar=("WEST", "SOUTH", "EAST", "NORTH"),
-        default=DEMO_CONFIG["bbox"],
+        required=True,
         help="Bounding box in WEST SOUTH EAST NORTH order.",
     )
     create_parser.add_argument(
