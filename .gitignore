@@ -22,3 +22,4 @@ pixi.lock
 sandbox/example_data/nwis_rdb/readme.md
 sandbox/example_data/api.waterdata.usgs.gov/readme.md
 sandbox/README.md
+.DS_Store
