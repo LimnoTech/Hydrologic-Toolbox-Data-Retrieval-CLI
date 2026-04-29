@@ -28,3 +28,17 @@ These examples assume you are running from the repo root in PowerShell.
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data discharge --station-id 02225500 --parameter-code 00060 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data periodic --station-id 410947071344803 --parameter-code 72019 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` for the requested station and date range. |
+
+## Quick Test Note
+
+If you want to kick the tires from the repo root, run the CLI suite with:
+
+```powershell
+python -m pytest tests\test_cli_signature.py -v
+```
+
+If you want the whole local test folder instead:
+
+```powershell
+python -m pytest tests -v
+```
