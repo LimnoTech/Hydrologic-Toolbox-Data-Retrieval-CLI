@@ -29,3 +29,17 @@ These examples assume you are running from the repo root in PowerShell.
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data discharge --station-id 02225500 --parameter-code 00060 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data daily --station-id 324209082430201 --parameter-code 72019 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
 | `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data periodic --station-id 410947071344803 --parameter-code 72019 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` for the requested station and date range. |
+
+## Crosswalk Note
+
+For shapefile attribute tables, the CLI maps raw Water Data field names to NWIS-style names first, then writes shapefile-safe field names from that mapping. The USGS migration guide is the reference for those aliases: [USGS Water Data migration guide](https://api.waterdata.usgs.gov/docs/ogcapi/migration/).
+
+| Water Data field | NWIS-style name | Shapefile field |
+| --- | --- | --- |
+| `agency_code` | `agency_cd` | `agency_cd` |
+| `monitoring_location_number` | `site_no` | `site_no` |
+| `monitoring_location_name` | `station_nm` | `station_nm` |
+| `site_type_code` | `site_tp_cd` | `site_tp_cd` |
+| `hydrologic_unit_code` | `huc_cd` | `huc_cd` |
+| `drainage_area` | `drain_area_va` | `drain_area` |
+| `geometry` | `dec_lat_va` / `dec_long_va` | `dec_lat_va` / `dec_long_v` |
