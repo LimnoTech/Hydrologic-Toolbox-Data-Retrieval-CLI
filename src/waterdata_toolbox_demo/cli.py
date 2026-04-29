@@ -10,18 +10,12 @@ from waterdata_toolbox_demo.exports import format_artifact_messages
 from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
 from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
 
-_WORKFLOW_VALUE_MAP = {
-    "discharge": "discharge",
-    "daily": "gw_daily",
-    "periodic": "gw_periodic",
-}
-
-_WORKFLOW_CHOICES = tuple(_WORKFLOW_VALUE_MAP)
+_WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
 
 
 def _map_workflows(workflow_names):
-    """Map human-facing workflow names to the current internal workflow ids."""
-    return [_WORKFLOW_VALUE_MAP[workflow_name] for workflow_name in workflow_names]
+    """Return the requested workflow names in CLI order."""
+    return list(workflow_names)
 
 
 def build_parser():
@@ -103,7 +97,7 @@ def run_cli(argv):
         return 0
 
     if args.command == "add-data":
-        workflow_type = _WORKFLOW_VALUE_MAP[args.workflow]
+        workflow_type = args.workflow
         example = DEMO_CONFIG["example_stations"].get(workflow_type, {})
         station_id = args.station_id or example.get("station_id")
         parameter_code = example.get("parameter_code")
