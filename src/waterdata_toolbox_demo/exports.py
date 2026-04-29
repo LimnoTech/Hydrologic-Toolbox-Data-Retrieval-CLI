@@ -146,16 +146,6 @@ def export_timeseries_artifacts(
     return {"csv": csv_path}
 
 
-def export_station_artifacts(frame, output_dir, file_stem):
-    """Write a normalized station CSV artifact and return its path."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = output_dir / f"{file_stem}.csv"
-    export_frame = _prepare_frame_for_export(frame)
-    export_frame.to_csv(csv_path, index=False)
-    return {"csv": csv_path}
-
-
 def _dbf_text_value(value):
     """Return a DBF-safe string value."""
     safe_value = _csv_safe_value(value)

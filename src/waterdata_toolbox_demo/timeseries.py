@@ -225,36 +225,3 @@ def get_usgs_timeseries(
         "metadata": metadata_dict,
     }
 
-
-def run_add_data_to_project_section(
-    example_stations,
-    output_dir,
-    date_range,
-    waterdata_module=None,
-):
-    """Run the legacy add-data demo section for each configured workflow type."""
-    results = {}
-    for workflow_type, example in example_stations.items():
-        try:
-            payload = get_usgs_timeseries(
-                example["station_id"],
-                workflow_type,
-                output_dir,
-                parameter_code=example.get("parameter_code"),
-                date_range=date_range,
-                waterdata_module=waterdata_module,
-            )
-        except Exception as exc:
-            results[workflow_type] = {
-                "payload": None,
-                "error": str(exc),
-                "artifact_messages": [],
-            }
-            continue
-
-        results[workflow_type] = {
-            "payload": payload,
-            "error": None,
-            "artifact_messages": format_artifact_messages(payload["files"]),
-        }
-    return results
