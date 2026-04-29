@@ -65,10 +65,6 @@ def build_parser():
         help="USGS station identifier. Falls back to the demo station for the workflow.",
     )
     add_parser.add_argument(
-        "--parameter-code",
-        help="USGS parameter code. Falls back to the demo parameter for the workflow.",
-    )
-    add_parser.add_argument(
         "--start-date",
         default=DEMO_CONFIG["date_range"][0],
         help="Start date for the Water Data request in YYYY-MM-DD format.",
@@ -110,7 +106,7 @@ def run_cli(argv):
         workflow_type = _WORKFLOW_VALUE_MAP[args.workflow]
         example = DEMO_CONFIG["example_stations"].get(workflow_type, {})
         station_id = args.station_id or example.get("station_id")
-        parameter_code = args.parameter_code or example.get("parameter_code")
+        parameter_code = example.get("parameter_code")
         payload = get_usgs_timeseries(
             station_id,
             workflow_type,
