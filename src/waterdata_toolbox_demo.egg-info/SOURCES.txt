@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/waterdata_toolbox_demo/__init__.py
 src/waterdata_toolbox_demo/__main__.py
