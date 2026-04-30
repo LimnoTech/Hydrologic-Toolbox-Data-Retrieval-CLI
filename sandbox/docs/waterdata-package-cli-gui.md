@@ -14,8 +14,8 @@ This package now supports a CLI-only packaged app workflow.
 Use one or more `--wf` selections:
 
 - `--wf discharge`
-- `--wf daily`
-- `--wf periodic`
+- `--wf gw_daily`
+- `--wf gw_periodic`
 
 Example:
 
@@ -23,7 +23,7 @@ Example:
 PYTHONPATH=src python -m waterdata_toolbox_demo create-new-project \
   --bbox -82.859 31.899 -82.013 32.947 \
   --wf discharge \
-  --wf daily \
+  --wf gw_daily \
   --output-dir dist/outputs/project_smoke
 ```
 
@@ -47,8 +47,8 @@ The shapefile DBF uses NWIS-style field names from a code-local crosswalk rather
 Use one workflow positional argument:
 
 - `discharge`
-- `daily`
-- `periodic`
+- `gw_daily`
+- `gw_periodic`
 
 Example:
 
@@ -56,7 +56,6 @@ Example:
 PYTHONPATH=src python -m waterdata_toolbox_demo add-data \
   discharge \
   --station-id 02225500 \
-  --parameter-code 00060 \
   --output-dir dist/outputs/data_smoke
 ```
 

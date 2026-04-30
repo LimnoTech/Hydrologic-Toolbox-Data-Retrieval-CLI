@@ -73,11 +73,22 @@ def test_create_new_project_parser_accepts_repeatable_wf():
     from waterdata_toolbox_demo.cli import build_parser
 
     args = build_parser().parse_args(
-        ["create-new-project", "--wf", "discharge", "--wf", "daily"]
+        [
+            "create-new-project",
+            "--wf",
+            "discharge",
+            "--wf",
+            "gw_daily",
+            "--bbox",
+            "-82.859",
+            "31.899",
+            "-82.013",
+            "32.947",
+        ]
     )
 
     assert args.command == "create-new-project"
-    assert args.wf == ["discharge", "daily"]
+    assert args.wf == ["discharge", "gw_daily"]
 
 
 def test_add_data_parser_accepts_positional_workflow():
@@ -85,7 +96,7 @@ def test_add_data_parser_accepts_positional_workflow():
     from waterdata_toolbox_demo.cli import build_parser
 
     args = build_parser().parse_args(
-        ["add-data", "discharge", "--station-id", "02225500", "--parameter-code", "00060"]
+        ["add-data", "discharge", "--station-id", "02225500"]
     )
 
     assert args.command == "add-data"
@@ -98,6 +109,7 @@ def test_add_data_parser_accepts_positional_workflow():
         [],
         ["create-new-project"],
         ["create-new-project", "--wf", "bogus"],
+        ["create-new-project", "--wf", "discharge"],
         ["create-new-project", "--wf", "discharge", "--bbox", "-82.859", "31.899", "-82.013"],
         ["create-new-project", "--wf", "discharge", "--unknown"],
     ],
@@ -105,6 +117,7 @@ def test_add_data_parser_accepts_positional_workflow():
         "missing_subcommand",
         "create_new_project_missing_wf",
         "create_new_project_bad_wf",
+        "create_new_project_missing_bbox",
         "create_new_project_short_bbox",
         "create_new_project_unknown_flag",
     ],
@@ -155,7 +168,7 @@ def test_help_surface_for_create_new_project(capsys):
     help_text = capsys.readouterr().out
 
     assert exc_info.value.code == 0
-    assert "--wf {discharge,daily,periodic}" in help_text
+    assert "--wf {discharge,gw_daily,gw_periodic}" in help_text
     assert "--discharge" not in help_text
     assert "--daily" not in help_text
     assert "--periodic" not in help_text
@@ -172,11 +185,10 @@ def test_help_surface_for_add_data(capsys):
     help_text = capsys.readouterr().out
 
     assert exc_info.value.code == 0
-    assert "{discharge,daily,periodic}" in help_text
+    assert "{discharge,gw_daily,gw_periodic}" in help_text
     assert "Workflow to run." in help_text
     assert "--discharge" not in help_text
-    assert "--daily" not in help_text
-    assert "--periodic" not in help_text
+    assert "--parameter-code" not in help_text
 
 
 # Live create-new-project coverage
@@ -187,24 +199,24 @@ def test_help_surface_for_add_data(capsys):
     ("workflow_values", "expected_stems", "expected_labels"),
     [
         (["discharge"], ["discharge"], ["discharge"]),
-        (["daily"], ["daily"], ["gw_daily"]),
-        (["periodic"], ["periodic"], ["gw_periodic"]),
-        (["discharge", "daily"], ["discharge", "daily"], ["discharge", "gw_daily"]),
-        (["discharge", "periodic"], ["discharge", "periodic"], ["discharge", "gw_periodic"]),
-        (["daily", "periodic"], ["daily", "periodic"], ["gw_daily", "gw_periodic"]),
+        (["gw_daily"], ["daily"], ["gw_daily"]),
+        (["gw_periodic"], ["periodic"], ["gw_periodic"]),
+        (["discharge", "gw_daily"], ["discharge", "daily"], ["discharge", "gw_daily"]),
+        (["discharge", "gw_periodic"], ["discharge", "periodic"], ["discharge", "gw_periodic"]),
+        (["gw_daily", "gw_periodic"], ["daily", "periodic"], ["gw_daily", "gw_periodic"]),
         (
-            ["discharge", "daily", "periodic"],
+            ["discharge", "gw_daily", "gw_periodic"],
             ["discharge", "daily", "periodic"],
             ["discharge", "gw_daily", "gw_periodic"],
         ),
     ],
     ids=[
         "create_new_project_discharge_live",
-        "create_new_project_daily_live",
-        "create_new_project_periodic_live",
-        "create_new_project_discharge_daily_live",
-        "create_new_project_discharge_periodic_live",
-        "create_new_project_daily_periodic_live",
+        "create_new_project_gw_daily_live",
+        "create_new_project_gw_periodic_live",
+        "create_new_project_discharge_gw_daily_live",
+        "create_new_project_discharge_gw_periodic_live",
+        "create_new_project_gw_daily_gw_periodic_live",
         "create_new_project_all_live",
     ],
 )
@@ -219,6 +231,7 @@ def test_live_create_new_project_workflow_combinations(
     args = ["create-new-project"]
     for workflow in workflow_values:
         args.extend(["--wf", workflow])
+    args.extend(["--bbox", "-82.859", "31.899", "-82.013", "32.947"])
     args.extend(["--output-dir", str(output_dir)])
 
     result = run_cli_command(*args)
@@ -237,7 +250,7 @@ def test_live_create_new_project_periodic_bbox_override(tmp_path: Path):
     result = run_cli_command(
         "create-new-project",
         "--wf",
-        "periodic",
+        "gw_periodic",
         "--bbox",
         "-82.859",
         "31.899",
@@ -260,7 +273,6 @@ def test_live_create_new_project_periodic_bbox_override(tmp_path: Path):
     (
         "workflow",
         "station_id",
-        "parameter_code",
         "date_range",
         "expected_file_name",
         "expected_label",
@@ -270,25 +282,22 @@ def test_live_create_new_project_periodic_bbox_override(tmp_path: Path):
         (
             "discharge",
             "02225500",
-            "00060",
             None,
             "discharge_02225500.csv",
             "discharge",
             True,
         ),
         (
-            "daily",
+            "gw_daily",
             "324209082430201",
-            "72019",
             None,
             "gw_daily_324209082430201.csv",
             "gw_daily",
             True,
         ),
         (
-            "periodic",
+            "gw_periodic",
             "410947071344803",
-            "72019",
             ("1880-01-01", "2100-01-01"),
             "gw_periodic_410947071344803.csv",
             "gw_periodic",
@@ -297,15 +306,14 @@ def test_live_create_new_project_periodic_bbox_override(tmp_path: Path):
     ],
     ids=[
         "add_data_discharge_live",
-        "add_data_daily_live",
-        "add_data_periodic_live",
+        "add_data_gw_daily_live",
+        "add_data_gw_periodic_live",
     ],
 )
 def test_live_add_data_workflows(
     tmp_path: Path,
     workflow: str,
     station_id: str,
-    parameter_code: str,
     date_range: tuple[str, str] | None,
     expected_file_name: str,
     expected_label: str,
@@ -318,8 +326,6 @@ def test_live_add_data_workflows(
         workflow,
         "--station-id",
         station_id,
-        "--parameter-code",
-        parameter_code,
     ]
     if date_range is not None:
         args.extend(["--start-date", date_range[0], "--end-date", date_range[1]])
@@ -343,7 +349,9 @@ def test_live_add_data_workflows(
         assert lines[2] == "Time,Daily values,Approval status,Qualifier"
         assert len(csv_path.read_text(encoding="utf-8").splitlines()) > 3
     else:
-        header_line = read_first_lines(csv_path, count=1)[0]
-        assert not header_line.startswith("# ")
-        assert "station_id" in header_line
-        assert "workflow_type" in header_line
+        lines = read_first_lines(csv_path)
+        assert lines[0].startswith("# monitoring_location_id")
+        assert lines[1].startswith("# ")
+        assert lines[2].startswith("time,value")
+        assert "station_id" not in lines[2]
+        assert "workflow_type" not in lines[2]
