@@ -16,8 +16,6 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-CLI_PYTHON = "/Users/lludden/miniforge3/envs/nhm/bin/python"
-
 
 def _cli_env() -> dict[str, str]:
     """Return an environment that exposes the active package on PYTHONPATH."""
@@ -34,7 +32,7 @@ def _cli_env() -> dict[str, str]:
 def run_cli_command(*args: str) -> subprocess.CompletedProcess[str]:
     """Run the CLI entrypoint as a subprocess and capture stdout/stderr."""
     return subprocess.run(
-        [CLI_PYTHON, "-m", "waterdata_toolbox_demo", *args],
+        [sys.executable, "-m", "waterdata_toolbox_demo", *args],
         cwd=PROJECT_ROOT,
         env=_cli_env(),
         capture_output=True,
@@ -101,6 +99,25 @@ def test_add_data_parser_accepts_positional_workflow():
 
     assert args.command == "add-data"
     assert args.workflow == "discharge"
+
+
+def test_run_cli_command_uses_current_python_interpreter(monkeypatch):
+    """CLI subprocesses should run under the same interpreter as pytest."""
+    captured: dict[str, object] = {}
+    sentinel_python = "/tmp/current-python"
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(sys, "executable", sentinel_python)
+
+    result = run_cli_command("add-data", "discharge", "--station-id", "02225500")
+
+    assert result.returncode == 0
+    assert captured["command"][0] == sentinel_python
 
 
 @pytest.mark.parametrize(
