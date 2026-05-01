@@ -1,9 +1,6 @@
 docs/*
 __pycache__/
 *.pyc
-tests/
-
-tests/*
 .pytest_cache/
 outputs/*
 build/*# pixi environments
