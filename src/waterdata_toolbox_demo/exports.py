@@ -490,6 +490,7 @@ def _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata
             "# "
             + _format_csv_line(
                 header_values,
+                forced_quote_fields={"monitoring_location_name"},
                 field_names=header_fields,
             )
             + "\n"
