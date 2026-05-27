@@ -148,6 +148,7 @@ def run_create_new_project_section(
     workflow_types,
     output_dir,
     waterdata_module=None,
+    output_projection=None,
 ):
     """Run create-project discovery and write one shapefile per workflow."""
     if waterdata_module is None:
@@ -169,6 +170,7 @@ def run_create_new_project_section(
             frame,
             output_dir,
             output_stems[workflow_type],
+            output_projection=output_projection,
         )
         workflow_payloads[workflow_type] = {
             "frame": frame,

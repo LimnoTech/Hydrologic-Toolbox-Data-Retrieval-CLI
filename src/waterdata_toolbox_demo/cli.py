@@ -9,6 +9,7 @@ from waterdata_toolbox_demo.config import DEMO_CONFIG
 from waterdata_toolbox_demo.exports import format_artifact_messages
 from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
 from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
+from waterdata_toolbox_demo.xml_compat import handle_xml_request
 
 _WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
 
@@ -74,6 +75,13 @@ def build_parser():
         help="Directory where CSV outputs will be written.",
     )
 
+    xml_parser = subparsers.add_parser("xml-compat")
+    xml_parser.add_argument(
+        "--xml",
+        required=True,
+        help="HydrologicToolbox NWIS/Water Data XML request string.",
+    )
+
     return parser
 
 
@@ -112,5 +120,10 @@ def run_cli(argv):
         for message in format_artifact_messages(payload["files"]):
             print(message)
         return 0
+
+    if args.command == "xml-compat":
+        response = handle_xml_request(args.xml)
+        print(response)
+        return 1 if response.startswith("<error>") else 0
 
     parser.error(f"Unsupported command: {args.command}")

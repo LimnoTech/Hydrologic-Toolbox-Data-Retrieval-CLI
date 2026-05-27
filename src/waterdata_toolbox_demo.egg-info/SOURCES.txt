@@ -8,9 +8,12 @@ src/waterdata_toolbox_demo/config.py
 src/waterdata_toolbox_demo/exports.py
 src/waterdata_toolbox_demo/station_discovery.py
 src/waterdata_toolbox_demo/timeseries.py
+src/waterdata_toolbox_demo/xml_compat.py
 src/waterdata_toolbox_demo.egg-info/PKG-INFO
 src/waterdata_toolbox_demo.egg-info/SOURCES.txt
 src/waterdata_toolbox_demo.egg-info/dependency_links.txt
 src/waterdata_toolbox_demo.egg-info/entry_points.txt
 src/waterdata_toolbox_demo.egg-info/requires.txt
 src/waterdata_toolbox_demo.egg-info/top_level.txt
+tests/test_cli_signature.py
+tests/test_xml_compat.py

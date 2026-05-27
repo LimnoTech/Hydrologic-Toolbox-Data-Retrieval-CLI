@@ -6,6 +6,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from pyproj import CRS
 import shapefile
 
 _RAW_CSV_HEADER_FIELDS = [
@@ -375,13 +376,22 @@ def _write_station_shapefile(writer_path, frame):
     writer.close()
 
 
-def _write_station_shapefile_sidecars(shapefile_path):
+def _projection_prj_text(output_projection):
+    """Return one `.prj` string for the requested output projection."""
+    if output_projection is None:
+        return _WGS84_PRJ
+    if str(output_projection).upper() == "EPSG:4326":
+        return _WGS84_PRJ
+    return CRS.from_user_input(output_projection).to_wkt(version="WKT1_GDAL")
+
+
+def _write_station_shapefile_sidecars(shapefile_path, prj_text):
     """Write the `.prj` and `.cpg` sidecars for the station shapefile."""
-    shapefile_path.with_suffix(".prj").write_text(_WGS84_PRJ, encoding="utf-8")
+    shapefile_path.with_suffix(".prj").write_text(prj_text, encoding="utf-8")
     shapefile_path.with_suffix(".cpg").write_text("UTF-8\n", encoding="utf-8")
 
 
-def export_station_shapefile_artifacts(frame, output_dir, file_stem):
+def export_station_shapefile_artifacts(frame, output_dir, file_stem, output_projection=None):
     """Write a shapefile with NWIS-crosswalk monitoring-location attributes and return the `.shp` path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -389,8 +399,13 @@ def export_station_shapefile_artifacts(frame, output_dir, file_stem):
     if not isinstance(frame, gpd.GeoDataFrame):
         raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
     export_frame = gpd.GeoDataFrame(frame.copy(), geometry="geometry", crs=frame.crs or "EPSG:4326")
+    if output_projection is not None:
+        export_frame = export_frame.to_crs(output_projection)
     _write_station_shapefile(shapefile_path, export_frame)
-    _write_station_shapefile_sidecars(shapefile_path)
+    _write_station_shapefile_sidecars(
+        shapefile_path,
+        _projection_prj_text(output_projection),
+    )
     return {"shp": shapefile_path}
 
 
