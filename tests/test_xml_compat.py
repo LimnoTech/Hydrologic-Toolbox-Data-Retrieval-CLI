@@ -1,0 +1,421 @@
+"""Offline coverage for the HydrologicToolbox XML compatibility layer."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import geopandas as gpd
+from pyproj import CRS, Transformer
+import pytest
+import shapefile
+from shapely.geometry import Point
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+
+def test_parser_accepts_xml_compat_command():
+    """The CLI parser should expose the XML compatibility entrypoint."""
+    from waterdata_toolbox_demo.cli import build_parser
+
+    args = build_parser().parse_args(["xml-compat", "--xml", "<function />"])
+
+    assert args.command == "xml-compat"
+    assert args.xml == "<function />"
+
+
+def test_xml_request_missing_savein_returns_error_xml():
+    """Missing SaveIn should return the approved XML error payload."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <DataType>discharge</DataType>
+            <region>
+              <northbc>1</northbc>
+              <southbc>0</southbc>
+              <eastbc>1</eastbc>
+              <westbc>0</westbc>
+              <projection>+proj=longlat +datum=WGS84 +no_defs</projection>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == "<error>Missing required tag: SaveIn</error>"
+
+
+def test_xml_request_invalid_xml_returns_error_xml():
+    """Malformed XML should return a stable XML error payload."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request("<function")
+
+    assert response.startswith("<error>Invalid XML:")
+
+
+def test_station_request_missing_datatype_returns_error_xml():
+    """Station discovery XML should require at least one DataType tag."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <region>
+              <northbc>1</northbc>
+              <southbc>0</southbc>
+              <eastbc>1</eastbc>
+              <westbc>0</westbc>
+              <projection>+proj=longlat +datum=WGS84 +no_defs</projection>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == "<error>Missing required tag: DataType</error>"
+
+
+def test_station_request_missing_region_projection_returns_error_xml():
+    """Station discovery XML should require a region projection string."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <DataType>discharge</DataType>
+            <region>
+              <northbc>1</northbc>
+              <southbc>0</southbc>
+              <eastbc>1</eastbc>
+              <westbc>0</westbc>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == "<error>Missing required tag: projection</error>"
+
+
+def test_add_data_request_missing_stationid_returns_error_xml():
+    """Add-data XML should require at least one stationid tag."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request(
+        """
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == "<error>Missing required tag: stationid</error>"
+
+
+def test_unsupported_function_returns_error_xml():
+    """Unknown XML function names should fail cleanly."""
+    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+
+    response = handle_xml_request(
+        """
+        <function name="GetSomethingElse">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == "<error>Unsupported function: GetSomethingElse</error>"
+
+
+def test_parse_station_request_defaults_desired_projection_to_wgs84():
+    """Station requests should default DesiredProjection to WGS84."""
+    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+
+    request = parse_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <DataType>discharge</DataType>
+            <region>
+              <northbc>1</northbc>
+              <southbc>0</southbc>
+              <eastbc>1</eastbc>
+              <westbc>0</westbc>
+              <projection>+proj=longlat +datum=WGS84 +no_defs</projection>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert request["desired_projection"] == "EPSG:4326"
+
+
+def test_parse_station_request_transforms_region_bbox_to_wgs84():
+    """Station requests should transform projected region bounds into WGS84."""
+    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+
+    west, south, east, north = (-82.859, 31.899, -82.013, 32.947)
+    source_projection = "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+    transformer = Transformer.from_crs(CRS.from_epsg(4326), CRS.from_proj4(source_projection), always_xy=True)
+    west_x, south_y = transformer.transform(west, south)
+    east_x, north_y = transformer.transform(east, north)
+
+    request = parse_xml_request(
+        f"""
+        <function name="GetNWISStations">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <DataType>discharge</DataType>
+            <region>
+              <northbc>{north_y}</northbc>
+              <southbc>{south_y}</southbc>
+              <eastbc>{east_x}</eastbc>
+              <westbc>{west_x}</westbc>
+              <projection>{source_projection}</projection>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    transformed = request["bbox"]
+    assert transformed[0] == pytest.approx(west, abs=0.01)
+    assert transformed[1] == pytest.approx(south, abs=0.01)
+    assert transformed[2] == pytest.approx(east, abs=0.01)
+    assert transformed[3] == pytest.approx(north, abs=0.01)
+
+
+def test_parse_add_data_request_keeps_multiple_station_ids():
+    """Add-data XML should preserve multiple station IDs in request order."""
+    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+
+    request = parse_xml_request(
+        """
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02336106</stationid>
+            <stationid>02336107</stationid>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert request["kind"] == "add_data"
+    assert request["workflow_type"] == "discharge"
+    assert request["station_ids"] == ["02336106", "02336107"]
+
+
+def test_format_station_success_xml_lists_output_paths():
+    """Station XML success payload should enumerate shapefile paths."""
+    from waterdata_toolbox_demo.xml_compat import format_station_success_xml
+
+    response = format_station_success_xml(
+        {
+            "discharge": Path("/tmp/NWIS_Stations_discharge.shp"),
+            "gw_daily": Path("/tmp/NWIS_Stations_gw_daily.shp"),
+        }
+    )
+
+    assert response == (
+        "<success>"
+        '<add_shape workflow="discharge">/tmp/NWIS_Stations_discharge.shp</add_shape>'
+        '<add_shape workflow="gw_daily">/tmp/NWIS_Stations_gw_daily.shp</add_shape>'
+        "</success>"
+    )
+
+
+def test_format_add_data_success_xml_lists_output_paths():
+    """Add-data XML success payload should enumerate CSV paths."""
+    from waterdata_toolbox_demo.xml_compat import format_add_data_success_xml
+
+    response = format_add_data_success_xml(
+        [
+            {
+                "workflow": "discharge",
+                "stationid": "02336106",
+                "path": Path("/tmp/discharge_02336106.csv"),
+            },
+            {
+                "workflow": "gw_daily",
+                "stationid": "324209082430201",
+                "path": Path("/tmp/gw_daily_324209082430201.csv"),
+            },
+        ]
+    )
+
+    assert response == (
+        "<success>"
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">/tmp/discharge_02336106.csv</add_data>'
+        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">/tmp/gw_daily_324209082430201.csv</add_data>'
+        "</success>"
+    )
+
+
+def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
+    """Station shapefile export should honor an explicit output projection."""
+    from waterdata_toolbox_demo.exports import export_station_shapefile_artifacts
+
+    frame = gpd.GeoDataFrame(
+        {
+            "monitoring_location_id": ["USGS-123"],
+            "monitoring_location_number": ["123"],
+            "monitoring_location_name": ["Example station"],
+            "site_type_code": ["ST"],
+        },
+        geometry=[Point(-82.5, 32.5)],
+        crs="EPSG:4326",
+    )
+
+    output = export_station_shapefile_artifacts(
+        frame,
+        tmp_path,
+        "stations",
+        output_projection="+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs",
+    )
+
+    prj_text = output["shp"].with_suffix(".prj").read_text(encoding="utf-8")
+    shape = shapefile.Reader(str(output["shp"])).shape(0)
+
+    assert "Mercator" in prj_text or "merc" in prj_text.lower()
+    assert shape.points[0][0] != pytest.approx(-82.5)
+    assert shape.points[0][1] != pytest.approx(32.5)
+
+
+def test_handle_xml_request_station_discovery_returns_success_xml(monkeypatch, tmp_path: Path):
+    """Station-discovery XML requests should return add_shape success XML."""
+    from waterdata_toolbox_demo import xml_compat
+
+    expected_shp = tmp_path / "NWIS_Stations_discharge.shp"
+
+    def fake_run_create_new_project_section(
+        bbox,
+        workflow_types,
+        output_dir,
+        waterdata_module=None,
+        output_projection=None,
+    ):
+        assert workflow_types == ["discharge"]
+        assert output_dir == Path("/tmp/out")
+        assert output_projection == "EPSG:4326"
+        assert len(bbox) == 4
+        return {
+            "discharge": {
+                "files": {"shp": expected_shp},
+            }
+        }
+
+    monkeypatch.setattr(
+        xml_compat,
+        "run_create_new_project_section",
+        fake_run_create_new_project_section,
+    )
+
+    response = xml_compat.handle_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <DataType>discharge</DataType>
+            <region>
+              <northbc>1</northbc>
+              <southbc>0</southbc>
+              <eastbc>1</eastbc>
+              <westbc>0</westbc>
+              <projection>+proj=longlat +datum=WGS84 +no_defs</projection>
+            </region>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == (
+        "<success>"
+        f'<add_shape workflow="discharge">{expected_shp}</add_shape>'
+        "</success>"
+    )
+
+
+def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: Path):
+    """Add-data XML requests should return add_data success XML per station."""
+    from waterdata_toolbox_demo import xml_compat
+
+    expected_a = tmp_path / "discharge_02336106.csv"
+    expected_b = tmp_path / "discharge_02336107.csv"
+
+    def fake_get_usgs_timeseries(
+        station_id,
+        workflow_type,
+        output_dir,
+        parameter_code=None,
+        date_range=("1880-01-01", "2100-01-01"),
+        waterdata_module=None,
+    ):
+        return {
+            "files": {"csv": expected_a if station_id == "02336106" else expected_b},
+            "frame": [],
+        }
+
+    monkeypatch.setattr(xml_compat, "get_usgs_timeseries", fake_get_usgs_timeseries)
+
+    response = xml_compat.handle_xml_request(
+        """
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02336106</stationid>
+            <stationid>02336107</stationid>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert response == (
+        "<success>"
+        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_a}</add_data>'
+        f'<add_data type="CSV" subtype="discharge" stationid="02336107">{expected_b}</add_data>'
+        "</success>"
+    )
+
+
+def test_run_cli_xml_compat_success_prints_xml(monkeypatch, capsys):
+    """The CLI should print XML success payloads unchanged."""
+    from waterdata_toolbox_demo import cli
+
+    monkeypatch.setattr(cli, "handle_xml_request", lambda xml_text: "<success />")
+
+    result = cli.run_cli(["xml-compat", "--xml", "<function />"])
+    output = capsys.readouterr().out.strip()
+
+    assert result == 0
+    assert output == "<success />"
+
+
+def test_run_cli_xml_compat_error_returns_nonzero(monkeypatch, capsys):
+    """The CLI should print XML errors and return a nonzero exit code."""
+    from waterdata_toolbox_demo import cli
+
+    monkeypatch.setattr(cli, "handle_xml_request", lambda xml_text: "<error>bad request</error>")
+
+    result = cli.run_cli(["xml-compat", "--xml", "<function />"])
+    output = capsys.readouterr().out.strip()
+
+    assert result == 1
+    assert output == "<error>bad request</error>"

@@ -17,6 +17,19 @@ or run it from the repo root:
 .\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --help
 ```
 
+## HydrologicToolbox XML
+
+The direct CLI remains available for manual use. HydrologicToolbox integration
+uses the XML entrypoint instead:
+
+```powershell
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --xml '<function name="GetNWISDailyDischarge"><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>'
+```
+
+That command prints exactly one XML response string:
+- `<success>...</success>` when files were written
+- `<error>...</error>` when required XML tags are missing or invalid
+
 ## Commands
 
 These examples assume you are running from the repo root in PowerShell.
