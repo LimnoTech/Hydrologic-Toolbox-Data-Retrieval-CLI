@@ -323,11 +323,27 @@ def _prepare_station_plot_frame(frame):
     return plot_frame
 
 
+def _combined_web_mercator_extent(frames):
+    """Return (xmin, ymin, xmax, ymax) in EPSG:3857 across all GeoDataFrames."""
+    import numpy as np
+    bounds = []
+    for frame in frames:
+        if not (hasattr(frame, "crs") and "geometry" in frame.columns) or frame.empty:
+            continue
+        b = frame.to_crs(epsg=3857).total_bounds  # (xmin, ymin, xmax, ymax)
+        bounds.append(b)
+    if not bounds:
+        return None
+    arr = np.array(bounds)
+    return (arr[:, 0].min(), arr[:, 1].min(), arr[:, 2].max(), arr[:, 3].max())
+
+
 def plot_station_discovery_map(
     workflow_type,
     create_section_results,
     plt_module=None,
     prepare_station_plot_frame=None,
+    shared_extent=None,
 ):
     """Plot station locations for the selected new-project workflow."""
     if prepare_station_plot_frame is None:
@@ -345,12 +361,27 @@ def plot_station_discovery_map(
         print(f"No mappable station coordinates available for {workflow_type}")
         return
 
-    fig, ax = plt_module.subplots(figsize=(8, 5))
-    ax.scatter(plot_frame["dec_long_va"], plot_frame["dec_lat_va"])
+    fig, ax = plt_module.subplots(figsize=(10, 8))
+
+    has_geometry = hasattr(plot_frame, "crs") and "geometry" in plot_frame.columns
+    if has_geometry:
+        web_mercator_frame = plot_frame.to_crs(epsg=3857)
+        web_mercator_frame.plot(ax=ax, markersize=12, color="steelblue", zorder=2)
+        if shared_extent is not None:
+            xmin, ymin, xmax, ymax = shared_extent
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
+        try:
+            import contextily as ctx
+            ctx.add_basemap(ax, source=ctx.providers.Esri.WorldTopoMap, zoom_adjust=-1)
+        except ImportError:
+            pass
+    else:
+        ax.scatter(plot_frame["dec_long_va"], plot_frame["dec_lat_va"])
+
     ax.set_title(f"{workflow_type.replace('_', ' ').title()} Station Discovery")
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    ax.grid(True)
+    ax.set_axis_off()
+    plt_module.tight_layout()
     plt_module.show()
 
 
@@ -371,6 +402,8 @@ def render_station_discovery_selector(
     if plot_station_discovery_map_fn is None:
         plot_station_discovery_map_fn = plot_station_discovery_map
 
+    shared_extent = _combined_web_mercator_extent(list(create_section_results.values()))
+
     options = list(create_section_results.keys()) or ["discharge", "gw_daily", "gw_periodic"]
     dropdown = widgets_module.Dropdown(
         options=options,
@@ -382,7 +415,9 @@ def render_station_discovery_selector(
     def _render(change=None):
         with output:
             clear_output_fn(wait=True)
-            plot_station_discovery_map_fn(dropdown.value, create_section_results)
+            plot_station_discovery_map_fn(
+                dropdown.value, create_section_results, shared_extent=shared_extent
+            )
 
     dropdown.observe(_render, names="value")
     _render()
