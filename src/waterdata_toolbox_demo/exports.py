@@ -31,6 +31,16 @@ _REDUCED_CSV_COLUMN_NAMES = {
     "qualifier": "Qualifier",
 }
 
+_REDUCED_CSV_FORCED_QUOTE_FIELDS = {
+    "site_no",
+    "Description",
+    "Parameter",
+    "Statistic",
+    "Site number",
+    "Station name",
+    "HUC code",
+}
+
 _PERIODIC_CSV_BODY_PREFERRED_COLUMNS = [
     "time",
     "value",
@@ -47,6 +57,24 @@ _PERIODIC_CSV_EXCLUDED_COLUMNS = {
     "workflow_type",
     "geometry",
     "geometry_type",
+}
+
+_PERIODIC_CSV_FORCED_QUOTE_FIELDS = {
+    "monitoring_location_id",
+    "monitoring_location_number",
+    "monitoring_location_name",
+    "site_type_code",
+    "hydrologic_unit_code",
+    "vertical_datum",
+    "district_code",
+    "state_code",
+    "county_code",
+    "country_code",
+    "time_zone_abbreviation",
+    "national_aquifer_code",
+    "aquifer_code",
+    "aquifer_type_code",
+    "depth_source_code",
 }
 #https://api.waterdata.usgs.gov/docs/ogcapi/migration/
 _STATION_SHAPEFILE_CROSSWALK = [
@@ -148,6 +176,17 @@ def _format_csv_line(values, forced_quote_fields=None, field_names=None):
     return ",".join(formatted_values)
 
 
+def _write_csv_atomically(csv_path, write_callback):
+    """Write a CSV through a temporary sibling path, then replace the final file."""
+    temporary_path = csv_path.with_name(f".{csv_path.name}.tmp")
+    try:
+        write_callback(temporary_path)
+        temporary_path.replace(csv_path)
+    except Exception:
+        temporary_path.unlink(missing_ok=True)
+        raise
+
+
 def export_timeseries_artifacts(
     frame,
     output_dir,
@@ -161,11 +200,14 @@ def export_timeseries_artifacts(
     csv_path = output_dir / f"{workflow_type}_{station_id}.csv"
 
     export_frame = _prepare_frame_for_export(frame)
-    _write_timeseries_csv_artifact(
+    _write_csv_atomically(
         csv_path,
-        export_frame,
-        workflow_type,
-        csv_header_metadata=csv_header_metadata,
+        lambda temporary_path: _write_timeseries_csv_artifact(
+            temporary_path,
+            export_frame,
+            workflow_type,
+            csv_header_metadata=csv_header_metadata,
+        ),
     )
     return {"csv": csv_path}
 
@@ -505,7 +547,7 @@ def _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata
             "# "
             + _format_csv_line(
                 header_values,
-                forced_quote_fields={"monitoring_location_name"},
+                forced_quote_fields=_PERIODIC_CSV_FORCED_QUOTE_FIELDS,
                 field_names=header_fields,
             )
             + "\n"
@@ -542,7 +584,7 @@ def _write_timeseries_csv_artifact(csv_path, frame, workflow_type, csv_header_me
             "# "
             + _format_csv_line(
                 header_values,
-                forced_quote_fields={"Parameter", "Statistic"},
+                forced_quote_fields=_REDUCED_CSV_FORCED_QUOTE_FIELDS,
                 field_names=_RAW_CSV_HEADER_FIELDS,
             )
             + "\n"

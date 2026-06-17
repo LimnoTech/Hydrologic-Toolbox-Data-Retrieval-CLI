@@ -16,4 +16,5 @@ src/waterdata_toolbox_demo.egg-info/entry_points.txt
 src/waterdata_toolbox_demo.egg-info/requires.txt
 src/waterdata_toolbox_demo.egg-info/top_level.txt
 tests/test_cli_signature.py
+tests/test_csv_export_assumptions.py
 tests/test_xml_compat.py

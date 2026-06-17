@@ -36,13 +36,75 @@ or run it from the repo root:
 The direct CLI remains available for manual use. HydrologicToolbox integration
 uses the XML entrypoint instead:
 
-```powershell
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --xml '<function name="GetNWISDailyDischarge"><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>'
-```
-
-That command prints exactly one XML response string:
+`xml-compat` prints exactly one XML response string:
 - `<success>...</success>` when files were written
 - `<error>...</error>` when required XML tags are missing or invalid
+
+
+```cmd
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+```
+
+PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
+you need to run it from PowerShell, use `--%`:
+
+```powershell
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+```
+
+The XML request is treated as a superset envelope. Extra tags that are not
+needed for the Water Data request are ignored.
+
+Supported XML request shapes:
+
+- Station discovery:
+  - function name: `GetNWISStations`
+  - required tags: `SaveIn`, one or more `DataType`, and `<region>` with `northbc`, `southbc`, `eastbc`, `westbc`, and `projection`
+  - supported `DataType` values: `discharge`, `gw_daily`, `gw_periodic`
+  - optional tag: `DesiredProjection`
+- Add-data:
+  - function names are mapped by name to the Water Data workflow, for example:
+    - `GetNWISDailyDischarge` -> `discharge`
+    - `GetNWISDailyGroundwater` -> `gw_daily`
+    - `GetNWISPeriodicGroundwater` -> `gw_periodic`
+  - required tags: `SaveIn` and one or more `stationid`
+  - one output file is written per station
+
+Defaults and behavior:
+
+- If `DesiredProjection` is missing, station shapefiles are written in WGS84 / `EPSG:4326`
+- Projected `<region>` bounds are transformed to WGS84 before the Water Data API call
+- Failures return `<error>...</error>` instead of raw tracebacks
+
+Example station request:
+
+```xml
+<function name="GetNWISStations">
+  <arguments>
+    <DataType>discharge</DataType>
+    <DataType>gw_daily</DataType>
+    <SaveIn>C:\temp\out</SaveIn>
+    <DesiredProjection>+proj=aea +ellps=GRS80 +lon_0=-96 +lat_0=23.0 +lat_1=29.5 +lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83 +units=m</DesiredProjection>
+    <region>
+      <northbc>4116087.71455496</northbc>
+      <southbc>3971380.60224013</southbc>
+      <eastbc>-9284994.6510355</eastbc>
+      <westbc>-9412819.34952669</westbc>
+      <projection>+x_0=0 +y_0=0 +lon_0=0 +lat_1=0 +proj=merc +ellps=WGS84 +no_defs</projection>
+    </region>
+  </arguments>
+</function>
+```
+
+Example success responses:
+
+```xml
+<success><add_shape workflow="discharge">C:\temp\out\discharge.shp</add_shape><add_shape workflow="gw_daily">C:\temp\out\gw_daily.shp</add_shape></success>
+```
+
+```xml
+<success><add_data type="CSV" subtype="discharge" stationid="02336106">C:\temp\out\discharge_02336106.csv</add_data></success>
+```
 
 ## Commands
 
