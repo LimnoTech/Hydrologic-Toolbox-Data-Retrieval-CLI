@@ -10,11 +10,27 @@ from waterdata_toolbox_demo.exports import (
     export_timeseries_artifacts,
     format_artifact_messages,
 )
+from waterdata_toolbox_demo.frame_types import categorize_existing_columns
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
     r"Could not infer format, so each element will be parsed individually.*"
 )
+
+_TIMESERIES_CATEGORICAL_COLUMNS = [
+    "monitoring_location_id",
+    "monitoring_location_number",
+    "time_series_id",
+    "parent_time_series_id",
+    "parameter_code",
+    "statistic_id",
+    "approval_status",
+    "qualifier",
+    "station_id",
+    "workflow_type",
+    "vertical_datum",
+    "measuring_agency",
+]
 
 
 def _normalize_monitoring_location_id(station_id):
@@ -362,9 +378,10 @@ def get_usgs_timeseries(
         )
 
     frame = frame.reset_index(drop=True).copy()
- 
+
     frame["station_id"] = station_id
     frame["workflow_type"] = workflow_type
+    frame = categorize_existing_columns(frame, _TIMESERIES_CATEGORICAL_COLUMNS)
 
     records = frame.to_dict(orient="records")
     file_paths = export_timeseries_artifacts(
@@ -385,4 +402,3 @@ def get_usgs_timeseries(
         "files": file_paths,
         "metadata": metadata_dict,
     }
-

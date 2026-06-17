@@ -10,11 +10,33 @@ from waterdata_toolbox_demo.exports import (
     export_station_shapefile_artifacts,
     format_artifact_messages,
 )
+from waterdata_toolbox_demo.frame_types import categorize_existing_columns
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
     r"Could not infer format, so each element will be parsed individually.*"
 )
+
+_STATION_CATEGORICAL_COLUMNS = [
+    "agency_code",
+    "monitoring_location_id",
+    "monitoring_location_number",
+    "monitoring_location_name",
+    "site_type_code",
+    "horizontal_position_method_code",
+    "original_horizontal_datum",
+    "district_code",
+    "state_code",
+    "county_code",
+    "country_code",
+    "hydrologic_unit_code",
+    "basin_code",
+    "time_zone_abbreviation",
+    "national_aquifer_code",
+    "aquifer_code",
+    "aquifer_type_code",
+    "depth_source_code",
+]
 
 
 def _call_station_discovery_with_filtered_datetime_warning(function, **kwargs):
@@ -95,6 +117,7 @@ def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
     ].copy()
     frame = frame.drop_duplicates(subset=["monitoring_location_id"])
     frame = frame.sort_values("monitoring_location_id").reset_index(drop=True)
+    frame = categorize_existing_columns(frame, _STATION_CATEGORICAL_COLUMNS)
 
     return _to_station_geodataframe(frame)
 
