@@ -50,6 +50,27 @@ def test_categorize_existing_columns_preserves_already_categorical_columns():
     assert list(result["workflow_type"]) == ["discharge", "gw_daily"]
 
 
+def test_categorize_existing_columns_skips_unhashable_list_values():
+    """List-valued API fields cannot be categorical values and should be left alone."""
+    from waterdata_toolbox_demo.frame_types import categorize_existing_columns
+
+    frame = pd.DataFrame(
+        {
+            "monitoring_location_id": ["USGS-04193500", "USGS-04193500"],
+            "qualifier": [["ESTIMATED"], ["ESTIMATED"]],
+        }
+    )
+
+    result = categorize_existing_columns(
+        frame,
+        ["monitoring_location_id", "qualifier"],
+    )
+
+    assert _is_category(result["monitoring_location_id"])
+    assert result["qualifier"].dtype == "object"
+    assert result["qualifier"].tolist() == [["ESTIMATED"], ["ESTIMATED"]]
+
+
 def test_get_usgs_timeseries_returns_categorical_repeated_columns(tmp_path):
     """Time-series payloads should categorize repeated codes before export/return."""
     from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
@@ -119,6 +140,73 @@ def test_get_usgs_timeseries_returns_categorical_repeated_columns(tmp_path):
     assert _is_category(frame["station_id"])
     assert _is_category(frame["workflow_type"])
     assert frame["value"].dtype == "float64"
+
+
+def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
+    """Daily responses can contain list-valued qualifiers that must not be categorized."""
+    from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
+
+    class FakeWaterdata:
+        @staticmethod
+        def get_daily(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "time": ["2026-06-01", "2026-06-02"],
+                        "value": [1.0, 2.0],
+                        "monitoring_location_id": ["USGS-04193500", "USGS-04193500"],
+                        "time_series_id": ["ts-1", "ts-1"],
+                        "parameter_code": ["00060", "00060"],
+                        "statistic_id": ["00003", "00003"],
+                        "approval_status": ["Approved", "Approved"],
+                        "qualifier": [["ESTIMATED"], ["ESTIMATED"]],
+                    }
+                ),
+                {},
+            )
+
+        @staticmethod
+        def get_time_series_metadata(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "time_series_id": ["ts-1"],
+                        "monitoring_location_id": ["USGS-04193500"],
+                        "parameter_code": ["00060"],
+                        "statistic_id": ["00003"],
+                        "parameter_description": ["Discharge, cubic feet per second"],
+                    }
+                ),
+                {},
+            )
+
+        @staticmethod
+        def get_monitoring_locations(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "monitoring_location_id": ["USGS-04193500"],
+                        "monitoring_location_number": ["04193500"],
+                        "monitoring_location_name": ["MAUMEE RIVER AT WATERVILLE OH"],
+                        "hydrologic_unit_code": ["04100009"],
+                    }
+                ),
+                {},
+            )
+
+    payload = get_usgs_timeseries(
+        "04193500",
+        "discharge",
+        tmp_path,
+        waterdata_module=FakeWaterdata,
+    )
+
+    frame = payload["frame"]
+
+    assert _is_category(frame["monitoring_location_id"])
+    assert _is_category(frame["parameter_code"])
+    assert frame["qualifier"].dtype == "object"
+    assert frame["qualifier"].tolist() == [["ESTIMATED"], ["ESTIMATED"]]
 
 
 def test_normalize_station_frame_returns_categorical_station_columns(monkeypatch):
