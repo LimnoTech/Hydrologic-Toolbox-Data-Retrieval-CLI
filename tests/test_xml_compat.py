@@ -27,6 +27,18 @@ def test_parser_accepts_xml_compat_command():
     assert args.xml == "<function />"
 
 
+def test_parser_accepts_xml_compat_debug_flag():
+    """The XML compatibility command should expose optional debug diagnostics."""
+    from waterdata_toolbox_demo.cli import build_parser
+
+    args = build_parser().parse_args(
+        ["xml-compat", "--debug", "--xml", "<function />"]
+    )
+
+    assert args.command == "xml-compat"
+    assert args.debug is True
+
+
 def test_xml_request_missing_savein_returns_error_xml():
     """Missing SaveIn should return the approved XML error payload."""
     from waterdata_toolbox_demo.xml_compat import handle_xml_request
@@ -395,6 +407,56 @@ def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: 
     )
 
 
+def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path: Path):
+    """Debug mode should report XML and add-data milestones without changing XML."""
+    from waterdata_toolbox_demo import xml_compat
+
+    expected_csv = tmp_path / "discharge_02336106.csv"
+    messages = []
+
+    def fake_get_usgs_timeseries(
+        station_id,
+        workflow_type,
+        output_dir,
+        parameter_code=None,
+        date_range=("1880-01-01", "2100-01-01"),
+        waterdata_module=None,
+        debug_logger=None,
+    ):
+        assert debug_logger is not None
+        debug_logger(f"fake download reached for {station_id}")
+        return {
+            "files": {"csv": expected_csv},
+            "frame": [1, 2, 3],
+        }
+
+    monkeypatch.setattr(xml_compat, "get_usgs_timeseries", fake_get_usgs_timeseries)
+
+    response = xml_compat.handle_xml_request(
+        """
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02336106</stationid>
+          </arguments>
+        </function>
+        """,
+        debug_logger=messages.append,
+    )
+
+    assert response == (
+        "<success>"
+        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_csv}</add_data>'
+        "</success>"
+    )
+    assert "xml-compat: received XML request" in messages
+    assert "xml-compat: parsed function=GetNWISDailyDischarge kind=add_data" in messages
+    assert "add-data: starting workflow=discharge stations=1 output_dir=/tmp/out" in messages
+    assert "add-data: station 02336106 download starting" in messages
+    assert "fake download reached for 02336106" in messages
+    assert f"add-data: station 02336106 wrote {expected_csv}" in messages
+
+
 def test_run_cli_xml_compat_success_prints_xml(monkeypatch, capsys):
     """The CLI should print XML success payloads unchanged."""
     from waterdata_toolbox_demo import cli
@@ -406,6 +468,46 @@ def test_run_cli_xml_compat_success_prints_xml(monkeypatch, capsys):
 
     assert result == 0
     assert output == "<success />"
+
+
+def test_run_cli_xml_compat_debug_prints_diagnostics_to_stderr(monkeypatch, capsys):
+    """Debug messages should not pollute stdout XML consumed by HydrologicToolbox."""
+    from waterdata_toolbox_demo import cli
+
+    def fake_handle_xml_request(xml_text, debug_logger=None):
+        assert xml_text == "<function />"
+        assert debug_logger is not None
+        debug_logger("xml parser reached")
+        return "<success />"
+
+    monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
+
+    result = cli.run_cli(["xml-compat", "--debug", "--xml", "<function />"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == "<success />"
+    assert "[waterdata-toolbox debug] xml parser reached" in captured.err
+
+
+def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, capsys):
+    """Debug logging should be available even when callers cannot add CLI flags."""
+    from waterdata_toolbox_demo import cli
+
+    def fake_handle_xml_request(xml_text, debug_logger=None):
+        assert debug_logger is not None
+        debug_logger("environment debug reached")
+        return "<success />"
+
+    monkeypatch.setenv("WATERDATA_TOOLBOX_DEBUG", "1")
+    monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
+
+    result = cli.run_cli(["xml-compat", "--xml", "<function />"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == "<success />"
+    assert "[waterdata-toolbox debug] environment debug reached" in captured.err
 
 
 def test_run_cli_xml_compat_error_returns_nonzero(monkeypatch, capsys):

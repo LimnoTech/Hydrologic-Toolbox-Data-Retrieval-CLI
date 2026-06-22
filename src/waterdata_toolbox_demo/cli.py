@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+import sys
 
 from waterdata_toolbox_demo.config import DEMO_CONFIG
 from waterdata_toolbox_demo.exports import format_artifact_messages
@@ -12,11 +14,23 @@ from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
 from waterdata_toolbox_demo.xml_compat import handle_xml_request
 
 _WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
+_TRUTHY_DEBUG_VALUES = {"1", "true", "yes", "on"}
 
 
 def _map_workflows(workflow_names):
     """Return the requested workflow names in CLI order."""
     return list(workflow_names)
+
+
+def _stderr_debug_logger(message):
+    """Write one debug message to stderr without touching XML stdout."""
+    print(f"[waterdata-toolbox debug] {message}", file=sys.stderr)
+
+
+def _xml_debug_enabled(args):
+    """Return whether XML compatibility debug logging is enabled."""
+    env_value = os.environ.get("WATERDATA_TOOLBOX_DEBUG", "")
+    return args.debug or env_value.strip().lower() in _TRUTHY_DEBUG_VALUES
 
 
 def build_parser():
@@ -81,6 +95,11 @@ def build_parser():
         required=True,
         help="HydrologicToolbox NWIS/Water Data XML request string.",
     )
+    xml_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Write XML compatibility diagnostics to stderr.",
+    )
 
     return parser
 
@@ -122,7 +141,10 @@ def run_cli(argv):
         return 0
 
     if args.command == "xml-compat":
-        response = handle_xml_request(args.xml)
+        if _xml_debug_enabled(args):
+            response = handle_xml_request(args.xml, debug_logger=_stderr_debug_logger)
+        else:
+            response = handle_xml_request(args.xml)
         print(response)
         return 1 if response.startswith("<error>") else 0
 

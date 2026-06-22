@@ -321,6 +321,7 @@ def get_usgs_timeseries(
     parameter_code=None,
     date_range=("1880-01-01", "2100-01-01"),
     waterdata_module=None,
+    debug_logger=None,
 ):
     """Return one add-data payload plus the exported CSV artifact for a station."""
     if waterdata_module is None:
@@ -328,8 +329,21 @@ def get_usgs_timeseries(
 
     monitoring_location_id = _normalize_monitoring_location_id(station_id)
     effective_parameter_code = "00060" if workflow_type == "discharge" else parameter_code
+    if debug_logger is not None:
+        debug_logger(
+            f"download: starting workflow={workflow_type} station_id={station_id}"
+        )
 
     if workflow_type in {"discharge", "gw_daily"}:
+        if debug_logger is not None:
+            debug_logger(
+                (
+                    "download: querying daily values "
+                    f"monitoring_location_id={monitoring_location_id} "
+                    f"parameter_code={effective_parameter_code} "
+                    f"date_range={date_range[0]}/{date_range[1]}"
+                )
+            )
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_daily,
             monitoring_location_id=monitoring_location_id,
@@ -337,6 +351,15 @@ def get_usgs_timeseries(
             time=list(date_range),
         )
     elif workflow_type == "gw_periodic":
+        if debug_logger is not None:
+            debug_logger(
+                (
+                    "download: querying field measurements "
+                    f"monitoring_location_id={monitoring_location_id} "
+                    f"parameter_code={effective_parameter_code} "
+                    f"date_range={date_range[0]}/{date_range[1]}"
+                )
+            )
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_field_measurements,
             monitoring_location_id=monitoring_location_id,
@@ -346,6 +369,14 @@ def get_usgs_timeseries(
     else:
         raise ValueError(f"Unsupported workflow type: {workflow_type}")
 
+    if debug_logger is not None:
+        debug_logger(
+            (
+                f"download: received {len(frame)} rows "
+                f"for workflow={workflow_type} station_id={station_id}"
+            )
+        )
+
     metadata_dict = metadata if isinstance(metadata, dict) else vars(metadata).copy()
     timeseries_metadata_frame = None
     monitoring_locations_frame = None
@@ -353,6 +384,8 @@ def get_usgs_timeseries(
     if workflow_type in {"discharge", "gw_daily"} and hasattr(
         waterdata_module, "get_time_series_metadata"
     ):
+        if debug_logger is not None:
+            debug_logger("download: querying time-series metadata")
         timeseries_metadata_frame, _ = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_time_series_metadata,
             monitoring_location_id=monitoring_location_id,
@@ -361,6 +394,8 @@ def get_usgs_timeseries(
     if workflow_type in {"discharge", "gw_daily", "gw_periodic"} and hasattr(
         waterdata_module, "get_monitoring_locations"
     ):
+        if debug_logger is not None:
+            debug_logger("download: querying monitoring-location metadata")
         monitoring_locations_frame, _ = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_monitoring_locations,
             monitoring_location_id=monitoring_location_id,
@@ -391,6 +426,8 @@ def get_usgs_timeseries(
         station_id,
         csv_header_metadata=csv_header_metadata,
     )
+    if debug_logger is not None:
+        debug_logger(f"download: wrote CSV {file_paths['csv']}")
     if frame.empty:
         metadata_dict = {
             **metadata_dict,

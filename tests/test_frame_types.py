@@ -209,6 +209,77 @@ def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
     assert frame["qualifier"].tolist() == [["ESTIMATED"], ["ESTIMATED"]]
 
 
+def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
+    """The download layer should report request, response, metadata, and export steps."""
+    from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
+
+    messages = []
+
+    class FakeWaterdata:
+        @staticmethod
+        def get_daily(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "time": ["2026-06-01", "2026-06-02"],
+                        "value": [1.0, 2.0],
+                        "monitoring_location_id": ["USGS-04193500", "USGS-04193500"],
+                        "time_series_id": ["ts-1", "ts-1"],
+                        "parameter_code": ["00060", "00060"],
+                        "statistic_id": ["00003", "00003"],
+                        "approval_status": ["Approved", "Approved"],
+                        "qualifier": ["A", "A"],
+                    }
+                ),
+                {},
+            )
+
+        @staticmethod
+        def get_time_series_metadata(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "time_series_id": ["ts-1"],
+                        "monitoring_location_id": ["USGS-04193500"],
+                        "parameter_code": ["00060"],
+                        "statistic_id": ["00003"],
+                        "parameter_description": ["Discharge, cubic feet per second"],
+                    }
+                ),
+                {},
+            )
+
+        @staticmethod
+        def get_monitoring_locations(**kwargs):
+            return (
+                pd.DataFrame(
+                    {
+                        "monitoring_location_id": ["USGS-04193500"],
+                        "monitoring_location_number": ["04193500"],
+                        "monitoring_location_name": ["MAUMEE RIVER AT WATERVILLE OH"],
+                        "hydrologic_unit_code": ["04100009"],
+                    }
+                ),
+                {},
+            )
+
+    payload = get_usgs_timeseries(
+        "04193500",
+        "discharge",
+        tmp_path,
+        waterdata_module=FakeWaterdata,
+        debug_logger=messages.append,
+    )
+
+    assert len(payload["frame"]) == 2
+    assert "download: starting workflow=discharge station_id=04193500" in messages
+    assert "download: querying daily values monitoring_location_id=USGS-04193500 parameter_code=00060 date_range=1880-01-01/2100-01-01" in messages
+    assert "download: received 2 rows for workflow=discharge station_id=04193500" in messages
+    assert "download: querying time-series metadata" in messages
+    assert "download: querying monitoring-location metadata" in messages
+    assert f"download: wrote CSV {payload['files']['csv']}" in messages
+
+
 def test_normalize_station_frame_returns_categorical_station_columns(monkeypatch):
     """Station discovery should categorize repeated station metadata before export."""
     from waterdata_toolbox_demo import station_discovery

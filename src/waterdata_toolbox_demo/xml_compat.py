@@ -20,6 +20,12 @@ def _error_xml(message: str) -> str:
     return f"<error>{message}</error>"
 
 
+def _debug(debug_logger, message: str) -> None:
+    """Emit one debug message when XML compatibility debugging is enabled."""
+    if debug_logger is not None:
+        debug_logger(message)
+
+
 def _parse_xml_root(xml_text: str):
     """Return the parsed XML root or raise a readable validation error."""
     try:
@@ -197,20 +203,39 @@ def format_add_data_success_xml(result_entries) -> str:
     return f"<success>{inner}</success>"
 
 
-def handle_xml_request(xml_text: str) -> str:
+def handle_xml_request(xml_text: str, debug_logger=None) -> str:
     """Handle one HydrologicToolbox XML request and return XML output."""
+    _debug(debug_logger, "xml-compat: received XML request")
     try:
         request = parse_xml_request(xml_text)
     except ValueError as exc:
+        _debug(debug_logger, f"xml-compat: validation failed: {exc}")
         return _error_xml(str(exc))
 
+    _debug(
+        debug_logger,
+        f"xml-compat: parsed function={request['function_name']} kind={request['kind']}",
+    )
     if request["kind"] == "station_discovery":
+        _debug(
+            debug_logger,
+            (
+                "station-discovery: starting "
+                f"workflows={','.join(request['workflow_types'])} "
+                f"bbox={request['bbox']} output_dir={request['output_dir']}"
+            ),
+        )
         results = run_create_new_project_section(
             request["bbox"],
             request["workflow_types"],
             request["output_dir"],
             output_projection=request["desired_projection"],
         )
+        for workflow, payload in results.items():
+            _debug(
+                debug_logger,
+                f"station-discovery: workflow={workflow} wrote {payload['files']['shp']}",
+            )
         return format_station_success_xml(
             {
                 workflow: payload["files"]["shp"]
@@ -220,12 +245,30 @@ def handle_xml_request(xml_text: str) -> str:
     if request["kind"] == "add_data":
         example = DEMO_CONFIG["example_stations"].get(request["workflow_type"], {})
         result_entries = []
+        _debug(
+            debug_logger,
+            (
+                "add-data: starting "
+                f"workflow={request['workflow_type']} "
+                f"stations={len(request['station_ids'])} "
+                f"output_dir={request['output_dir']}"
+            ),
+        )
         for station_id in request["station_ids"]:
+            _debug(debug_logger, f"add-data: station {station_id} download starting")
+            download_kwargs = {}
+            if debug_logger is not None:
+                download_kwargs["debug_logger"] = debug_logger
             payload = get_usgs_timeseries(
                 station_id,
                 request["workflow_type"],
                 request["output_dir"],
                 parameter_code=example.get("parameter_code"),
+                **download_kwargs,
+            )
+            _debug(
+                debug_logger,
+                f"add-data: station {station_id} wrote {payload['files']['csv']}",
             )
             result_entries.append(
                 {
