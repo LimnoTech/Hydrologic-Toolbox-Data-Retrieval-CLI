@@ -40,9 +40,18 @@ uses the XML entrypoint instead:
 - `<success>...</success>` when files were written
 - `<error>...</error>` when required XML tags are missing or invalid
 
+Add `--debug` to write progress messages to `stderr` while keeping the XML
+response on `stdout`. This is useful when checking whether the executable read
+the XML, parsed it, started a Water Data request, and wrote the output file.
+If it is easier for a calling app, set `WATERDATA_TOOLBOX_DEBUG=1` instead of
+passing `--debug`.
 
 ```cmd
 .\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+```
+
+```cmd
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
@@ -50,6 +59,10 @@ you need to run it from PowerShell, use `--%`:
 
 ```powershell
 .\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+```
+
+```powershell
+.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 The XML request is treated as a superset envelope. Extra tags that are not
