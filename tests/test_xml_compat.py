@@ -39,6 +39,20 @@ def test_parser_accepts_xml_compat_debug_flag():
     assert args.debug is True
 
 
+def test_parser_accepts_xml_compat_debug_log_path(tmp_path: Path):
+    """The XML compatibility command should support durable debug log files."""
+    from waterdata_toolbox_demo.cli import build_parser
+
+    log_path = tmp_path / "waterdata-debug.log"
+
+    args = build_parser().parse_args(
+        ["xml-compat", "--debug-log", str(log_path), "--xml", "<function />"]
+    )
+
+    assert args.command == "xml-compat"
+    assert args.debug_log == str(log_path)
+
+
 def test_xml_request_missing_savein_returns_error_xml():
     """Missing SaveIn should return the approved XML error payload."""
     from waterdata_toolbox_demo.xml_compat import handle_xml_request
@@ -508,6 +522,97 @@ def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, cap
     assert result == 0
     assert captured.out.strip() == "<success />"
     assert "[waterdata-toolbox debug] environment debug reached" in captured.err
+
+
+def test_run_cli_xml_compat_writes_debug_log_file(monkeypatch, capsys, tmp_path: Path):
+    """File logging should provide diagnostics without relying on console output."""
+    from waterdata_toolbox_demo import cli
+
+    log_path = tmp_path / "waterdata-debug.log"
+
+    def fake_handle_xml_request(xml_text, debug_logger=None):
+        assert debug_logger is not None
+        debug_logger("file debug reached")
+        return "<success />"
+
+    monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
+
+    result = cli.run_cli(
+        [
+            "xml-compat",
+            "--debug-log",
+            str(log_path),
+            "--xml",
+            "<function />",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == "<success />"
+    assert captured.err == ""
+    log_text = log_path.read_text(encoding="utf-8")
+    assert "[waterdata-toolbox debug] process: pid=" in log_text
+    assert "[waterdata-toolbox debug] process: cwd=" in log_text
+    assert "[waterdata-toolbox debug] file debug reached" in log_text
+
+
+def test_run_cli_xml_compat_debug_log_can_be_enabled_by_environment(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+):
+    """Calling apps should be able to request file logs without changing args."""
+    from waterdata_toolbox_demo import cli
+
+    log_path = tmp_path / "waterdata-debug.log"
+
+    def fake_handle_xml_request(xml_text, debug_logger=None):
+        assert debug_logger is not None
+        debug_logger("environment file debug reached")
+        return "<success />"
+
+    monkeypatch.setenv("WATERDATA_TOOLBOX_DEBUG_LOG", str(log_path))
+    monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
+
+    result = cli.run_cli(["xml-compat", "--xml", "<function />"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == "<success />"
+    assert "[waterdata-toolbox debug] environment file debug reached" in log_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_run_cli_xml_compat_debug_log_records_unhandled_exception(
+    monkeypatch,
+    tmp_path: Path,
+):
+    """Unexpected failures should leave a traceback in the debug log."""
+    from waterdata_toolbox_demo import cli
+
+    log_path = tmp_path / "waterdata-debug.log"
+
+    def fake_handle_xml_request(xml_text, debug_logger=None):
+        raise RuntimeError("simulated failure")
+
+    monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
+
+    with pytest.raises(RuntimeError):
+        cli.run_cli(
+            [
+                "xml-compat",
+                "--debug-log",
+                str(log_path),
+                "--xml",
+                "<function />",
+            ]
+        )
+
+    log_text = log_path.read_text(encoding="utf-8")
+    assert "[waterdata-toolbox debug] xml-compat: unhandled exception" in log_text
+    assert "RuntimeError: simulated failure" in log_text
 
 
 def test_run_cli_xml_compat_error_returns_nonzero(monkeypatch, capsys):

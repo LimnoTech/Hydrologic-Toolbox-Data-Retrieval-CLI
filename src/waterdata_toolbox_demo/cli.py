@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 import sys
+import traceback
 
 from waterdata_toolbox_demo.config import DEMO_CONFIG
 from waterdata_toolbox_demo.exports import format_artifact_messages
@@ -15,6 +17,7 @@ from waterdata_toolbox_demo.xml_compat import handle_xml_request
 
 _WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
 _TRUTHY_DEBUG_VALUES = {"1", "true", "yes", "on"}
+_DEBUG_LOG_ENV_VAR = "WATERDATA_TOOLBOX_DEBUG_LOG"
 
 
 def _map_workflows(workflow_names):
@@ -27,10 +30,63 @@ def _stderr_debug_logger(message):
     print(f"[waterdata-toolbox debug] {message}", file=sys.stderr)
 
 
+def _file_debug_logger(log_path):
+    """Return a debug logger that appends messages to a file."""
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log(message):
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        lines = str(message).splitlines() or [""]
+        with log_path.open("a", encoding="utf-8") as file_obj:
+            for line in lines:
+                file_obj.write(f"{timestamp} [waterdata-toolbox debug] {line}\n")
+
+    return log
+
+
+def _combined_debug_logger(loggers):
+    """Return one logger that fans messages out to all active loggers."""
+    active_loggers = [logger for logger in loggers if logger is not None]
+    if not active_loggers:
+        return None
+
+    def log(message):
+        for logger in active_loggers:
+            logger(message)
+
+    return log
+
+
 def _xml_debug_enabled(args):
     """Return whether XML compatibility debug logging is enabled."""
     env_value = os.environ.get("WATERDATA_TOOLBOX_DEBUG", "")
     return args.debug or env_value.strip().lower() in _TRUTHY_DEBUG_VALUES
+
+
+def _xml_debug_log_path(args):
+    """Return the configured XML compatibility debug log path, if any."""
+    return args.debug_log or os.environ.get(_DEBUG_LOG_ENV_VAR)
+
+
+def _build_xml_debug_logger(args):
+    """Return the configured XML compatibility debug logger, if enabled."""
+    file_log_path = _xml_debug_log_path(args)
+    return _combined_debug_logger(
+        [
+            _stderr_debug_logger if _xml_debug_enabled(args) else None,
+            _file_debug_logger(file_log_path) if file_log_path else None,
+        ]
+    )
+
+
+def _log_process_context(debug_logger, argv):
+    """Write process-level context that helps diagnose host-app launch issues."""
+    if debug_logger is None:
+        return
+    debug_logger(f"process: pid={os.getpid()}")
+    debug_logger(f"process: cwd={Path.cwd()}")
+    debug_logger(f"process: argv={list(argv)}")
 
 
 def build_parser():
@@ -100,6 +156,10 @@ def build_parser():
         action="store_true",
         help="Write XML compatibility diagnostics to stderr.",
     )
+    xml_parser.add_argument(
+        "--debug-log",
+        help="Append XML compatibility diagnostics to this log file.",
+    )
 
     return parser
 
@@ -107,7 +167,8 @@ def build_parser():
 def run_cli(argv):
     """Parse CLI arguments, dispatch a workflow, and print concise output."""
     parser = build_parser()
-    args = parser.parse_args(list(argv))
+    argv = list(argv)
+    args = parser.parse_args(argv)
 
     if args.command == "create-new-project":
         workflow_types = _map_workflows(args.wf)
@@ -141,10 +202,18 @@ def run_cli(argv):
         return 0
 
     if args.command == "xml-compat":
-        if _xml_debug_enabled(args):
-            response = handle_xml_request(args.xml, debug_logger=_stderr_debug_logger)
-        else:
-            response = handle_xml_request(args.xml)
+        debug_logger = _build_xml_debug_logger(args)
+        _log_process_context(debug_logger, argv)
+        try:
+            if debug_logger is not None:
+                response = handle_xml_request(args.xml, debug_logger=debug_logger)
+            else:
+                response = handle_xml_request(args.xml)
+        except Exception:
+            if debug_logger is not None:
+                debug_logger("xml-compat: unhandled exception")
+                debug_logger(traceback.format_exc())
+            raise
         print(response)
         return 1 if response.startswith("<error>") else 0
 
