@@ -65,6 +65,11 @@ you need to run it from PowerShell, use `--%`:
 The XML request is treated as a superset envelope. Extra tags that are not
 needed for the Water Data request are ignored.
 
+`xml-compat` can receive either one `<function>...</function>` document or a
+bundle containing multiple top-level `<function>` blocks. When a bundle is
+received, supported valid Water Data functions are processed in order and the
+results are returned in one `<success>` response.
+
 Supported XML request shapes:
 
 - Station discovery:

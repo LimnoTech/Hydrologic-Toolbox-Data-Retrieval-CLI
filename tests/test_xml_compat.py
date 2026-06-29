@@ -421,6 +421,120 @@ def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: 
     )
 
 
+def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp_path: Path):
+    """HydrologicToolbox can send multiple function blocks in one XML argument."""
+    from waterdata_toolbox_demo import xml_compat
+
+    expected_csv = tmp_path / "discharge_02357150.csv"
+    messages = []
+
+    def fake_get_usgs_timeseries(
+        station_id,
+        workflow_type,
+        output_dir,
+        parameter_code=None,
+        date_range=("1880-01-01", "2100-01-01"),
+        waterdata_module=None,
+        debug_logger=None,
+    ):
+        assert station_id == "02357150"
+        assert workflow_type == "discharge"
+        assert output_dir == Path("/tmp/out")
+        return {
+            "files": {"csv": expected_csv},
+            "frame": [1, 2, 3],
+        }
+
+    monkeypatch.setattr(xml_compat, "get_usgs_timeseries", fake_get_usgs_timeseries)
+
+    response = xml_compat.handle_xml_request(
+        """
+        <function name="GetNWISStations">
+          <arguments>
+            <DataType>discharge</DataType>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02357150</stationid>
+          </arguments>
+        </function>
+
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02357150</stationid>
+          </arguments>
+        </function>
+        """,
+        debug_logger=messages.append,
+    )
+
+    assert response == (
+        "<success>"
+        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_csv}</add_data>'
+        "</success>"
+    )
+    assert "xml-compat: found 2 function blocks" in messages
+    assert "xml-compat: parsed 1 function blocks" in messages
+    assert any(
+        "xml-compat: skipping function=GetNWISStations" in message
+        for message in messages
+    )
+
+
+def test_handle_xml_request_bundle_combines_add_data_results(monkeypatch, tmp_path: Path):
+    """Multiple valid add-data function blocks should return one combined success XML."""
+    from waterdata_toolbox_demo import xml_compat
+
+    expected_discharge = tmp_path / "discharge_02357150.csv"
+    expected_daily = tmp_path / "gw_daily_324209082430201.csv"
+    calls = []
+
+    def fake_get_usgs_timeseries(
+        station_id,
+        workflow_type,
+        output_dir,
+        parameter_code=None,
+        date_range=("1880-01-01", "2100-01-01"),
+        waterdata_module=None,
+        debug_logger=None,
+    ):
+        calls.append((station_id, workflow_type, parameter_code))
+        path = expected_daily if workflow_type == "gw_daily" else expected_discharge
+        return {
+            "files": {"csv": path},
+            "frame": [1],
+        }
+
+    monkeypatch.setattr(xml_compat, "get_usgs_timeseries", fake_get_usgs_timeseries)
+
+    response = xml_compat.handle_xml_request(
+        """
+        <function name="GetNWISDailyDischarge">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>02357150</stationid>
+          </arguments>
+        </function>
+        <function name="GetNWISDailyGroundwater">
+          <arguments>
+            <SaveIn>/tmp/out</SaveIn>
+            <stationid>324209082430201</stationid>
+          </arguments>
+        </function>
+        """
+    )
+
+    assert calls == [
+        ("02357150", "discharge", "00060"),
+        ("324209082430201", "gw_daily", "72019"),
+    ]
+    assert response == (
+        "<success>"
+        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_discharge}</add_data>'
+        f'<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">{expected_daily}</add_data>'
+        "</success>"
+    )
+
+
 def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path: Path):
     """Debug mode should report XML and add-data milestones without changing XML."""
     from waterdata_toolbox_demo import xml_compat
