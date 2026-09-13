@@ -6,9 +6,9 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from pyproj import CRS, Transformer
-from waterdata_toolbox_demo.config import DEMO_CONFIG
-from waterdata_toolbox_demo.station_discovery import run_create_new_project_section
-from waterdata_toolbox_demo.timeseries import get_usgs_timeseries
+from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
+from hydrologic_toolbox_data_retrieval_cli.station_discovery import run_create_new_project_section
+from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 
 _SUPPORTED_DISCOVERY_FUNCTION = "GetNWISStations"
 _SUPPORTED_DISCOVERY_DATATYPES = {"discharge", "gw_daily", "gw_periodic"}

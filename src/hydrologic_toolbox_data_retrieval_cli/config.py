@@ -1,4 +1,4 @@
-"""Shared defaults for the packaged Water Data ToolBox app."""
+"""Shared defaults for the packaged Hydrologic-Toolbox-DataRetrieval-CLI app."""
 
 DEMO_CONFIG = {
     "bbox": (-82.859, 31.899, -82.013, 32.947),

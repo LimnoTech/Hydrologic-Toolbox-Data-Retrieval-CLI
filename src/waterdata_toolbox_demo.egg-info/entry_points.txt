@@ -1,2 +1,0 @@
-[console_scripts]
-waterdata-toolbox-demo = waterdata_toolbox_demo.app:main

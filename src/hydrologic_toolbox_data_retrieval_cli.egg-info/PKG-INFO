@@ -1,7 +1,7 @@
 Metadata-Version: 2.4
-Name: waterdata-toolbox-demo
+Name: hydrologic-toolbox-data-retrieval-cli
 Version: 0.1.0
-Summary: CLI-only app for Water Data ToolBox demo workflows.
+Summary: CLI-only app for Hydrologic Toolbox data retrieval workflows.
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: dataretrieval
@@ -12,23 +12,33 @@ Requires-Dist: pyshp
 Provides-Extra: build
 Requires-Dist: pyinstaller; extra == "build"
 
-# Water Data ToolBox `.exe`
+# Hydrologic-Toolbox-DataRetrieval-CLI
 
-This repository packages a CLI-only Water Data ToolBox executable for Windows.
+This repository packages `Hydrologic-Toolbox-DataRetrieval-CLI`, a CLI-only
+executable for Windows that retrieves USGS Water Data for the Hydrologic
+Toolbox.
+
+## Websites
+
+| Resource | Link |
+| --- | --- |
+| Hydrologic Toolbox (USGS Techniques and Methods 4-D3) | <https://doi.org/10.3133/tm4D3> |
+| USGS Water Data APIs overview | <https://www.usgs.gov/tools/usgs-water-data-apis> |
+| USGS Water Data API hub | <https://api.waterdata.usgs.gov/> |
 
 ## Run The CLI
 
 Build the Windows app, then open PowerShell and either:
 
 ```powershell
-cd .\dist\waterdata_toolbox_demo
-.\waterdata_toolbox_demo.exe --help
+cd .\dist\hydrologic_toolbox_data_retrieval_cli
+.\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
 
 or run it from the repo root:
 
 ```powershell
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --help
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
 
 ## HydrologicToolbox XML
@@ -50,30 +60,30 @@ If it is easier for a calling app, set `WATERDATA_TOOLBOX_DEBUG=1` or
 passing debug flags.
 
 ```cmd
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```cmd
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```cmd
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
 you need to run it from PowerShell, use `--%`:
 
 ```powershell
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```powershell
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```powershell
-.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe --% xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 The XML request is treated as a superset envelope. Extra tags that are not
@@ -141,12 +151,12 @@ These examples assume you are running from the repo root in PowerShell.
 
 | Command | Result |
 | --- | --- |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf discharge --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_discharge` | Writes the `discharge` shapefile set to the output folder. |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf discharge --wf gw_daily --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_multi` | Writes one shapefile set for each selected workflow. |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe create-new-project --wf gw_periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data discharge --station-id 02225500 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data gw_daily --station-id 324209082430201 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
-| `.\dist\waterdata_toolbox_demo\waterdata_toolbox_demo.exe add-data gw_periodic --station-id 410947071344803 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` with a commented metadata header and a periodic measurement table. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf discharge --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_discharge` | Writes the `discharge` shapefile set to the output folder. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf discharge --wf gw_daily --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_multi` | Writes one shapefile set for each selected workflow. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf gw_periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data discharge --station-id 02225500 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data gw_daily --station-id 324209082430201 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
+| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data gw_periodic --station-id 410947071344803 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` with a commented metadata header and a periodic measurement table. |
 
 For `add-data`, the workflow name chooses the built-in USGS parameter automatically:
 - `discharge` -> `00060`

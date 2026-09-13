@@ -6,11 +6,11 @@ import warnings
 
 import pandas as pd
 
-from waterdata_toolbox_demo.exports import (
+from hydrologic_toolbox_data_retrieval_cli.exports import (
     export_timeseries_artifacts,
     format_artifact_messages,
 )
-from waterdata_toolbox_demo.frame_types import categorize_existing_columns
+from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
