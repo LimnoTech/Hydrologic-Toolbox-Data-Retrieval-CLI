@@ -1,2 +1,0 @@
-[console_scripts]
-hydrologic-toolbox-data-retrieval-cli = hydrologic_toolbox_data_retrieval_cli.app:main

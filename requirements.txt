@@ -1,8 +1,0 @@
-dataretrieval
-pandas
-geopandas
-pytest
-jupyter
-pyarrow
-matplotlib
-ipywidgets
