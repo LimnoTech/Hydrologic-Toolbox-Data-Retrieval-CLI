@@ -615,7 +615,7 @@ def test_run_cli_xml_compat_debug_prints_diagnostics_to_stderr(monkeypatch, caps
 
     assert result == 0
     assert captured.out.strip() == "<success />"
-    assert "[waterdata-toolbox debug] xml parser reached" in captured.err
+    assert "[htdr-cli debug] xml parser reached" in captured.err
 
 
 def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, capsys):
@@ -627,7 +627,7 @@ def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, cap
         debug_logger("environment debug reached")
         return "<success />"
 
-    monkeypatch.setenv("WATERDATA_TOOLBOX_DEBUG", "1")
+    monkeypatch.setenv("HYDROLOGIC_TOOLBOX_DEBUG", "1")
     monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
 
     result = cli.run_cli(["xml-compat", "--xml", "<function />"])
@@ -635,7 +635,7 @@ def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, cap
 
     assert result == 0
     assert captured.out.strip() == "<success />"
-    assert "[waterdata-toolbox debug] environment debug reached" in captured.err
+    assert "[htdr-cli debug] environment debug reached" in captured.err
 
 
 def test_run_cli_xml_compat_writes_debug_log_file(monkeypatch, capsys, tmp_path: Path):
@@ -666,9 +666,9 @@ def test_run_cli_xml_compat_writes_debug_log_file(monkeypatch, capsys, tmp_path:
     assert captured.out.strip() == "<success />"
     assert captured.err == ""
     log_text = log_path.read_text(encoding="utf-8")
-    assert "[waterdata-toolbox debug] process: pid=" in log_text
-    assert "[waterdata-toolbox debug] process: cwd=" in log_text
-    assert "[waterdata-toolbox debug] file debug reached" in log_text
+    assert "[htdr-cli debug] process: pid=" in log_text
+    assert "[htdr-cli debug] process: cwd=" in log_text
+    assert "[htdr-cli debug] file debug reached" in log_text
 
 
 def test_run_cli_xml_compat_debug_log_can_be_enabled_by_environment(
@@ -686,7 +686,7 @@ def test_run_cli_xml_compat_debug_log_can_be_enabled_by_environment(
         debug_logger("environment file debug reached")
         return "<success />"
 
-    monkeypatch.setenv("WATERDATA_TOOLBOX_DEBUG_LOG", str(log_path))
+    monkeypatch.setenv("HYDROLOGIC_TOOLBOX_DEBUG_LOG", str(log_path))
     monkeypatch.setattr(cli, "handle_xml_request", fake_handle_xml_request)
 
     result = cli.run_cli(["xml-compat", "--xml", "<function />"])
@@ -694,7 +694,7 @@ def test_run_cli_xml_compat_debug_log_can_be_enabled_by_environment(
 
     assert result == 0
     assert captured.out.strip() == "<success />"
-    assert "[waterdata-toolbox debug] environment file debug reached" in log_path.read_text(
+    assert "[htdr-cli debug] environment file debug reached" in log_path.read_text(
         encoding="utf-8"
     )
 
@@ -725,7 +725,7 @@ def test_run_cli_xml_compat_debug_log_records_unhandled_exception(
         )
 
     log_text = log_path.read_text(encoding="utf-8")
-    assert "[waterdata-toolbox debug] xml-compat: unhandled exception" in log_text
+    assert "[htdr-cli debug] xml-compat: unhandled exception" in log_text
     assert "RuntimeError: simulated failure" in log_text
 
 

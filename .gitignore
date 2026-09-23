@@ -33,15 +33,12 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-# Ignore build output by default, but the shipped CLI build and the sample
-# outputs are deliberately tracked so the repo carries a runnable exe.
-# The /** re-includes are required: without them the *.py[codz] rule above
-# swallows the bundled .pyd extension modules and the shipped exe won't run.
+# Compiled build output is NOT tracked - the exe ships as a GitHub Release
+# asset instead, so the repo stays small and each build has a version tag.
+# The sample outputs under dist/outputs/ are deliberately kept.
 dist/*
 !dist/outputs/
 !dist/outputs/**
-!dist/hydrologic_toolbox_data_retrieval_cli/
-!dist/hydrologic_toolbox_data_retrieval_cli/**
 downloads/
 eggs/
 .eggs/

@@ -4,24 +4,64 @@ This repository packages `Hydrologic-Toolbox-DataRetrieval-CLI`, a CLI-only
 executable for Windows that retrieves USGS Water Data for the Hydrologic
 Toolbox.
 
+## About The Hydrologic Toolbox
+
+The [Hydrologic Toolbox](https://doi.org/10.3133/tm4D3) is a USGS Windows
+desktop application that analyzes hydrologic time-series data through a
+graphical and mapping interface. It consolidates the earlier USGS Groundwater
+Toolbox (2014) and Surface-Water Toolbox (2018), and provides standard methods
+for hydrograph separation — BFI, HYSEP, PART, SWAT Bflow, and Eckhardt's
+two-parameter digital filter — along with RORA and RECESS for estimating
+groundwater recharge from streamflow records.
+
+Those analyses run on streamflow and groundwater-level data from the USGS
+National Water Information System. This repository supplies that retrieval
+step: the Toolbox calls `Hydrologic-Toolbox-DataRetrieval-CLI` with an XML
+request, the CLI queries the USGS Water Data APIs, and station shapefiles or
+time-series CSVs are written to a target folder. See
+[HydrologicToolbox XML](#hydrologictoolbox-xml) for the request format.
+
+Published as USGS Techniques and Methods, book 4, chapter D3 (Barlow and
+others, 2022).
+
 ## Websites
 
 | Resource | Link |
 | --- | --- |
+| Download the compiled CLI | <https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases> |
 | Hydrologic Toolbox (USGS Techniques and Methods 4-D3) | <https://doi.org/10.3133/tm4D3> |
 | USGS Water Data APIs overview | <https://www.usgs.gov/tools/usgs-water-data-apis> |
 | USGS Water Data API hub | <https://api.waterdata.usgs.gov/> |
 
+## Get The Executable
+
+The compiled Windows executable is published as a
+[Release asset](https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases),
+not committed to this repository. Download the archive for the version you
+want and unpack it anywhere.
+
+## Build From Source
+
+To compile the executable yourself, on Windows:
+
+```powershell
+pip install -e ".[build]"
+pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec
+```
+
+The build is written to
+`dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
+
 ## Run The CLI
 
-Build the Windows app, then open PowerShell and either:
+From the folder holding the executable:
 
 ```powershell
 cd .\dist\hydrologic_toolbox_data_retrieval_cli
 .\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
 
-or run it from the repo root:
+or by full path:
 
 ```powershell
 .\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
@@ -41,8 +81,8 @@ append those messages to a file. The XML response stays on `stdout`. This is
 useful when checking whether the executable read the XML, parsed it, started a
 Water Data request, and wrote the output file.
 
-If it is easier for a calling app, set `WATERDATA_TOOLBOX_DEBUG=1` or
-`WATERDATA_TOOLBOX_DEBUG_LOG=C:\temp\waterdata_toolbox_debug.log` instead of
+If it is easier for a calling app, set `HYDROLOGIC_TOOLBOX_DEBUG=1` or
+`HYDROLOGIC_TOOLBOX_DEBUG_LOG=C:\temp\htdr_cli_debug.log` instead of
 passing debug flags.
 
 ```cmd
@@ -54,7 +94,7 @@ passing debug flags.
 ```
 
 ```cmd
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
@@ -69,7 +109,7 @@ you need to run it from PowerShell, use `--%`:
 ```
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 The XML request is treated as a superset envelope. Extra tags that are not
