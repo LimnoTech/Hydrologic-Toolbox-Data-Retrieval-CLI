@@ -32,7 +32,7 @@ def _cli_env() -> dict[str, str]:
 def run_cli_command(*args: str) -> subprocess.CompletedProcess[str]:
     """Run the CLI entrypoint as a subprocess and capture stdout/stderr."""
     return subprocess.run(
-        [sys.executable, "-m", "waterdata_toolbox_demo", *args],
+        [sys.executable, "-m", "hydrologic_toolbox_data_retrieval_cli", *args],
         cwd=PROJECT_ROOT,
         env=_cli_env(),
         capture_output=True,
@@ -57,18 +57,18 @@ def read_first_lines(path: Path, count: int = 3) -> list[str]:
 
 def test_no_args_routes_to_help_and_returns_zero(capsys):
     """The packaged app should print help and return zero on empty args."""
-    from waterdata_toolbox_demo import app
+    from hydrologic_toolbox_data_retrieval_cli import app
 
     result = app.main([])
     output = capsys.readouterr().out
 
     assert result == 0
-    assert "usage: waterdata-toolbox-demo" in output
+    assert "usage: hydrologic-toolbox-data-retrieval-cli" in output
 
 
 def test_create_new_project_parser_accepts_repeatable_wf():
     """Create-new-project should accept one or more repeatable --wf flags."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     args = build_parser().parse_args(
         [
@@ -91,7 +91,7 @@ def test_create_new_project_parser_accepts_repeatable_wf():
 
 def test_add_data_parser_accepts_positional_workflow():
     """Add-data should accept one required positional workflow argument."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     args = build_parser().parse_args(
         ["add-data", "discharge", "--station-id", "02225500"]
@@ -141,7 +141,7 @@ def test_run_cli_command_uses_current_python_interpreter(monkeypatch):
 )
 def test_invalid_create_new_project_parser_cases(argv):
     """Invalid create-new-project command shapes should fail before any network work."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     with pytest.raises(SystemExit) as exc_info:
         build_parser().parse_args(argv)
@@ -166,7 +166,7 @@ def test_invalid_create_new_project_parser_cases(argv):
 )
 def test_invalid_add_data_parser_cases(argv):
     """Invalid add-data command shapes should fail before any network work."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     with pytest.raises(SystemExit) as exc_info:
         build_parser().parse_args(argv)
@@ -176,7 +176,7 @@ def test_invalid_add_data_parser_cases(argv):
 
 def test_help_surface_for_create_new_project(capsys):
     """Create-new-project help should advertise --wf instead of legacy booleans."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     parser = build_parser()
     with pytest.raises(SystemExit) as exc_info:
@@ -193,7 +193,7 @@ def test_help_surface_for_create_new_project(capsys):
 
 def test_help_surface_for_add_data(capsys):
     """Add-data help should advertise the positional workflow surface."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     parser = build_parser()
     with pytest.raises(SystemExit) as exc_info:

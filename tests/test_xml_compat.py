@@ -19,7 +19,7 @@ if str(SRC_DIR) not in sys.path:
 
 def test_parser_accepts_xml_compat_command():
     """The CLI parser should expose the XML compatibility entrypoint."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     args = build_parser().parse_args(["xml-compat", "--xml", "<function />"])
 
@@ -29,7 +29,7 @@ def test_parser_accepts_xml_compat_command():
 
 def test_parser_accepts_xml_compat_debug_flag():
     """The XML compatibility command should expose optional debug diagnostics."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     args = build_parser().parse_args(
         ["xml-compat", "--debug", "--xml", "<function />"]
@@ -41,7 +41,7 @@ def test_parser_accepts_xml_compat_debug_flag():
 
 def test_parser_accepts_xml_compat_debug_log_path(tmp_path: Path):
     """The XML compatibility command should support durable debug log files."""
-    from waterdata_toolbox_demo.cli import build_parser
+    from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
     log_path = tmp_path / "waterdata-debug.log"
 
@@ -55,7 +55,7 @@ def test_parser_accepts_xml_compat_debug_log_path(tmp_path: Path):
 
 def test_xml_request_missing_savein_returns_error_xml():
     """Missing SaveIn should return the approved XML error payload."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request(
         """
@@ -79,7 +79,7 @@ def test_xml_request_missing_savein_returns_error_xml():
 
 def test_xml_request_invalid_xml_returns_error_xml():
     """Malformed XML should return a stable XML error payload."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request("<function")
 
@@ -88,7 +88,7 @@ def test_xml_request_invalid_xml_returns_error_xml():
 
 def test_station_request_missing_datatype_returns_error_xml():
     """Station discovery XML should require at least one DataType tag."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request(
         """
@@ -112,7 +112,7 @@ def test_station_request_missing_datatype_returns_error_xml():
 
 def test_station_request_missing_region_projection_returns_error_xml():
     """Station discovery XML should require a region projection string."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request(
         """
@@ -136,7 +136,7 @@ def test_station_request_missing_region_projection_returns_error_xml():
 
 def test_add_data_request_missing_stationid_returns_error_xml():
     """Add-data XML should require at least one stationid tag."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request(
         """
@@ -153,7 +153,7 @@ def test_add_data_request_missing_stationid_returns_error_xml():
 
 def test_unsupported_function_returns_error_xml():
     """Unknown XML function names should fail cleanly."""
-    from waterdata_toolbox_demo.xml_compat import handle_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
     response = handle_xml_request(
         """
@@ -170,7 +170,7 @@ def test_unsupported_function_returns_error_xml():
 
 def test_parse_station_request_defaults_desired_projection_to_wgs84():
     """Station requests should default DesiredProjection to WGS84."""
-    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import parse_xml_request
 
     request = parse_xml_request(
         """
@@ -195,7 +195,7 @@ def test_parse_station_request_defaults_desired_projection_to_wgs84():
 
 def test_parse_station_request_transforms_region_bbox_to_wgs84():
     """Station requests should transform projected region bounds into WGS84."""
-    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import parse_xml_request
 
     west, south, east, north = (-82.859, 31.899, -82.013, 32.947)
     source_projection = "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
@@ -230,7 +230,7 @@ def test_parse_station_request_transforms_region_bbox_to_wgs84():
 
 def test_parse_add_data_request_keeps_multiple_station_ids():
     """Add-data XML should preserve multiple station IDs in request order."""
-    from waterdata_toolbox_demo.xml_compat import parse_xml_request
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import parse_xml_request
 
     request = parse_xml_request(
         """
@@ -251,7 +251,7 @@ def test_parse_add_data_request_keeps_multiple_station_ids():
 
 def test_format_station_success_xml_lists_output_paths():
     """Station XML success payload should enumerate shapefile paths."""
-    from waterdata_toolbox_demo.xml_compat import format_station_success_xml
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import format_station_success_xml
 
     response = format_station_success_xml(
         {
@@ -270,7 +270,7 @@ def test_format_station_success_xml_lists_output_paths():
 
 def test_format_add_data_success_xml_lists_output_paths():
     """Add-data XML success payload should enumerate CSV paths."""
-    from waterdata_toolbox_demo.xml_compat import format_add_data_success_xml
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import format_add_data_success_xml
 
     response = format_add_data_success_xml(
         [
@@ -297,7 +297,7 @@ def test_format_add_data_success_xml_lists_output_paths():
 
 def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
     """Station shapefile export should honor an explicit output projection."""
-    from waterdata_toolbox_demo.exports import export_station_shapefile_artifacts
+    from hydrologic_toolbox_data_retrieval_cli.exports import export_station_shapefile_artifacts
 
     frame = gpd.GeoDataFrame(
         {
@@ -327,7 +327,7 @@ def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
 
 def test_handle_xml_request_station_discovery_returns_success_xml(monkeypatch, tmp_path: Path):
     """Station-discovery XML requests should return add_shape success XML."""
-    from waterdata_toolbox_demo import xml_compat
+    from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_shp = tmp_path / "NWIS_Stations_discharge.shp"
 
@@ -381,7 +381,7 @@ def test_handle_xml_request_station_discovery_returns_success_xml(monkeypatch, t
 
 def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: Path):
     """Add-data XML requests should return add_data success XML per station."""
-    from waterdata_toolbox_demo import xml_compat
+    from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_a = tmp_path / "discharge_02336106.csv"
     expected_b = tmp_path / "discharge_02336107.csv"
@@ -423,7 +423,7 @@ def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: 
 
 def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp_path: Path):
     """HydrologicToolbox can send multiple function blocks in one XML argument."""
-    from waterdata_toolbox_demo import xml_compat
+    from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_csv = tmp_path / "discharge_02357150.csv"
     messages = []
@@ -482,7 +482,7 @@ def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp
 
 def test_handle_xml_request_bundle_combines_add_data_results(monkeypatch, tmp_path: Path):
     """Multiple valid add-data function blocks should return one combined success XML."""
-    from waterdata_toolbox_demo import xml_compat
+    from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_discharge = tmp_path / "discharge_02357150.csv"
     expected_daily = tmp_path / "gw_daily_324209082430201.csv"
@@ -537,7 +537,7 @@ def test_handle_xml_request_bundle_combines_add_data_results(monkeypatch, tmp_pa
 
 def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path: Path):
     """Debug mode should report XML and add-data milestones without changing XML."""
-    from waterdata_toolbox_demo import xml_compat
+    from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_csv = tmp_path / "discharge_02336106.csv"
     messages = []
@@ -587,7 +587,7 @@ def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path:
 
 def test_run_cli_xml_compat_success_prints_xml(monkeypatch, capsys):
     """The CLI should print XML success payloads unchanged."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     monkeypatch.setattr(cli, "handle_xml_request", lambda xml_text: "<success />")
 
@@ -600,7 +600,7 @@ def test_run_cli_xml_compat_success_prints_xml(monkeypatch, capsys):
 
 def test_run_cli_xml_compat_debug_prints_diagnostics_to_stderr(monkeypatch, capsys):
     """Debug messages should not pollute stdout XML consumed by HydrologicToolbox."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     def fake_handle_xml_request(xml_text, debug_logger=None):
         assert xml_text == "<function />"
@@ -620,7 +620,7 @@ def test_run_cli_xml_compat_debug_prints_diagnostics_to_stderr(monkeypatch, caps
 
 def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, capsys):
     """Debug logging should be available even when callers cannot add CLI flags."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     def fake_handle_xml_request(xml_text, debug_logger=None):
         assert debug_logger is not None
@@ -640,7 +640,7 @@ def test_run_cli_xml_compat_debug_can_be_enabled_by_environment(monkeypatch, cap
 
 def test_run_cli_xml_compat_writes_debug_log_file(monkeypatch, capsys, tmp_path: Path):
     """File logging should provide diagnostics without relying on console output."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     log_path = tmp_path / "waterdata-debug.log"
 
@@ -677,7 +677,7 @@ def test_run_cli_xml_compat_debug_log_can_be_enabled_by_environment(
     tmp_path: Path,
 ):
     """Calling apps should be able to request file logs without changing args."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     log_path = tmp_path / "waterdata-debug.log"
 
@@ -704,7 +704,7 @@ def test_run_cli_xml_compat_debug_log_records_unhandled_exception(
     tmp_path: Path,
 ):
     """Unexpected failures should leave a traceback in the debug log."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     log_path = tmp_path / "waterdata-debug.log"
 
@@ -731,7 +731,7 @@ def test_run_cli_xml_compat_debug_log_records_unhandled_exception(
 
 def test_run_cli_xml_compat_error_returns_nonzero(monkeypatch, capsys):
     """The CLI should print XML errors and return a nonzero exit code."""
-    from waterdata_toolbox_demo import cli
+    from hydrologic_toolbox_data_retrieval_cli import cli
 
     monkeypatch.setattr(cli, "handle_xml_request", lambda xml_text: "<error>bad request</error>")
 

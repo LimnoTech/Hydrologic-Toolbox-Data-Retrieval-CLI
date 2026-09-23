@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "waterdata-toolbox-demo"
+name = "hydrologic-toolbox-data-retrieval-cli"
 version = "0.1.0"
-description = "CLI-only app for Water Data ToolBox demo workflows."
+description = "CLI-only app for Hydrologic Toolbox data retrieval workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -20,7 +20,7 @@ dependencies = [
 build = ["pyinstaller"]
 
 [project.scripts]
-waterdata-toolbox-demo = "waterdata_toolbox_demo.app:main"
+hydrologic-toolbox-data-retrieval-cli = "hydrologic_toolbox_data_retrieval_cli.app:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -38,7 +38,7 @@ channels = ["conda-forge"]
 platforms = ["osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
-waterdata-toolbox-demo = { path = ".", editable = true }
+hydrologic-toolbox-data-retrieval-cli = { path = ".", editable = true }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
