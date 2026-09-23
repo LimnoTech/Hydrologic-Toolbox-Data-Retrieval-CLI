@@ -4,6 +4,26 @@ This repository packages `Hydrologic-Toolbox-DataRetrieval-CLI`, a CLI-only
 executable for Windows that retrieves USGS Water Data for the Hydrologic
 Toolbox.
 
+## About The Hydrologic Toolbox
+
+The [Hydrologic Toolbox](https://doi.org/10.3133/tm4D3) is a USGS Windows
+desktop application that analyzes hydrologic time-series data through a
+graphical and mapping interface. It consolidates the earlier USGS Groundwater
+Toolbox (2014) and Surface-Water Toolbox (2018), and provides standard methods
+for hydrograph separation — BFI, HYSEP, PART, SWAT Bflow, and Eckhardt's
+two-parameter digital filter — along with RORA and RECESS for estimating
+groundwater recharge from streamflow records.
+
+Those analyses run on streamflow and groundwater-level data from the USGS
+National Water Information System. This repository supplies that retrieval
+step: the Toolbox calls `Hydrologic-Toolbox-DataRetrieval-CLI` with an XML
+request, the CLI queries the USGS Water Data APIs, and station shapefiles or
+time-series CSVs are written to a target folder. See
+[HydrologicToolbox XML](#hydrologictoolbox-xml) for the request format.
+
+Published as USGS Techniques and Methods, book 4, chapter D3 (Barlow and
+others, 2022).
+
 ## Websites
 
 | Resource | Link |
