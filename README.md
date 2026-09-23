@@ -28,20 +28,40 @@ others, 2022).
 
 | Resource | Link |
 | --- | --- |
+| Download the compiled CLI | <https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases> |
 | Hydrologic Toolbox (USGS Techniques and Methods 4-D3) | <https://doi.org/10.3133/tm4D3> |
 | USGS Water Data APIs overview | <https://www.usgs.gov/tools/usgs-water-data-apis> |
 | USGS Water Data API hub | <https://api.waterdata.usgs.gov/> |
 
+## Get The Executable
+
+The compiled Windows executable is published as a
+[Release asset](https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases),
+not committed to this repository. Download the archive for the version you
+want and unpack it anywhere.
+
+## Build From Source
+
+To compile the executable yourself, on Windows:
+
+```powershell
+pip install -e ".[build]"
+pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec
+```
+
+The build is written to
+`dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
+
 ## Run The CLI
 
-Build the Windows app, then open PowerShell and either:
+From the folder holding the executable:
 
 ```powershell
 cd .\dist\hydrologic_toolbox_data_retrieval_cli
 .\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
 
-or run it from the repo root:
+or by full path:
 
 ```powershell
 .\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
