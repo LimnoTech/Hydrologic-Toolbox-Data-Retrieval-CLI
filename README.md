@@ -81,8 +81,8 @@ append those messages to a file. The XML response stays on `stdout`. This is
 useful when checking whether the executable read the XML, parsed it, started a
 Water Data request, and wrote the output file.
 
-If it is easier for a calling app, set `WATERDATA_TOOLBOX_DEBUG=1` or
-`WATERDATA_TOOLBOX_DEBUG_LOG=C:\temp\waterdata_toolbox_debug.log` instead of
+If it is easier for a calling app, set `HYDROLOGIC_TOOLBOX_DEBUG=1` or
+`HYDROLOGIC_TOOLBOX_DEBUG_LOG=C:\temp\htdr_cli_debug.log` instead of
 passing debug flags.
 
 ```cmd
@@ -94,7 +94,7 @@ passing debug flags.
 ```
 
 ```cmd
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
@@ -109,7 +109,7 @@ you need to run it from PowerShell, use `--%`:
 ```
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\waterdata_toolbox_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 The XML request is treated as a superset envelope. Extra tags that are not

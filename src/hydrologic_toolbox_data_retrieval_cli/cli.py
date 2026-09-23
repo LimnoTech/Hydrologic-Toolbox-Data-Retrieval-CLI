@@ -17,7 +17,7 @@ from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
 _WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
 _TRUTHY_DEBUG_VALUES = {"1", "true", "yes", "on"}
-_DEBUG_LOG_ENV_VAR = "WATERDATA_TOOLBOX_DEBUG_LOG"
+_DEBUG_LOG_ENV_VAR = "HYDROLOGIC_TOOLBOX_DEBUG_LOG"
 
 
 def _map_workflows(workflow_names):
@@ -27,7 +27,7 @@ def _map_workflows(workflow_names):
 
 def _stderr_debug_logger(message):
     """Write one debug message to stderr without touching XML stdout."""
-    print(f"[waterdata-toolbox debug] {message}", file=sys.stderr)
+    print(f"[htdr-cli debug] {message}", file=sys.stderr)
 
 
 def _file_debug_logger(log_path):
@@ -40,7 +40,7 @@ def _file_debug_logger(log_path):
         lines = str(message).splitlines() or [""]
         with log_path.open("a", encoding="utf-8") as file_obj:
             for line in lines:
-                file_obj.write(f"{timestamp} [waterdata-toolbox debug] {line}\n")
+                file_obj.write(f"{timestamp} [htdr-cli debug] {line}\n")
 
     return log
 
@@ -60,7 +60,7 @@ def _combined_debug_logger(loggers):
 
 def _xml_debug_enabled(args):
     """Return whether XML compatibility debug logging is enabled."""
-    env_value = os.environ.get("WATERDATA_TOOLBOX_DEBUG", "")
+    env_value = os.environ.get("HYDROLOGIC_TOOLBOX_DEBUG", "")
     return args.debug or env_value.strip().lower() in _TRUTHY_DEBUG_VALUES
 
 

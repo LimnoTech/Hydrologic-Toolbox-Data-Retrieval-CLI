@@ -2,7 +2,7 @@
 
 DEMO_CONFIG = {
     "bbox": (-82.859, 31.899, -82.013, 32.947),
-    "output_dir": "outputs/usgs_waterdata_demo",
+    "output_dir": "outputs/hydrologic_toolbox_data_retrieval_cli",
     "date_range": ("1880-01-01", "2100-01-01"),
     "example_stations": {
         "discharge": {"station_id": "02225500", "parameter_code": "00060"},
