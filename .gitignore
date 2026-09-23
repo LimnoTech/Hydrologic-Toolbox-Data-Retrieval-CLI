@@ -33,7 +33,11 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# Ignore build output by default, but the shipped CLI build and the sample
+# outputs are deliberately tracked so the repo carries a runnable exe.
+dist/*
+!dist/outputs/
+!dist/hydrologic_toolbox_data_retrieval_cli/
 downloads/
 eggs/
 .eggs/
