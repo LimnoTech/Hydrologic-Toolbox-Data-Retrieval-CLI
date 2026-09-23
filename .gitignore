@@ -247,3 +247,4 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 /sandbox/outputs
+dist/outputs/.DS_Store
