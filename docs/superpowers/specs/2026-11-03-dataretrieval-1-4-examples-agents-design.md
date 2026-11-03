@@ -123,7 +123,7 @@ the reader needs of the pattern, since the skill itself is private.
    with a `# noqa` and a reason instead.
 9. **Commit `pixi.lock`.** Remove `pixi.lock`, `pixi.toml` and the stale `sandbox/...` lines
    from `.gitignore`. Also remove `*.spec`, which ignores the tracked PyInstaller spec. Add
-   `_version.py`. Check that `.pixi/` and `build/` stay ignored. The `dist/*` exclusion with
+   `_version.py` and `_app_key.py` (Part B2). Check that `.pixi/` and `build/` stay ignored. The `dist/*` exclusion with
    `!dist/outputs/` stays as it is.
 10. **`--version` flag** (*builder's call*): add `--version` to the CLI, printing the
     hatch-vcs version. It adds to the CLI surface without touching the XML/CSV/shapefile
@@ -332,7 +332,7 @@ Sections:
 
 ## Part E — Examples
 
-```
+```text
 examples/
   README.md                       what each notebook is for, how to run it
   1_using_the_cli.py / .ipynb
