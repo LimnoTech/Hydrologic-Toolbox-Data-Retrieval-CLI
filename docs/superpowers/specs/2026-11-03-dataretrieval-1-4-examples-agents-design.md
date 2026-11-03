@@ -53,6 +53,8 @@ The round fails, even if every test passes, if:
   the shapefile file names, field names, field types and widths, and `.prj`. Any change to any
   of these is a breaking change, listed in the PR and approved by Paul before release.
 - A release is published before Paul has tested its build in the Toolbox.
+- The Water Data app key (Part B2) appears anywhere in the repository, a log, a CI output
+  or a file the CLI writes, or users are asked to supply a token of their own.
 - The repo links to anything private (`limno-agent-skills`, `water-data-engine`) as something
   a reader must follow to work here. Naming them as where a rule came from is fine.
 
@@ -200,6 +202,46 @@ comment (by Paul or by Anthony relaying it). Fixes from his testing, and the com
 regenerated `dist/outputs/`, are follow-up commits on the same branch after that comment,
 each one a short gate of its own. Anthony then marks the PR ready, merges, and pushes the
 `v0.2.0` tag; tagging is a human action, like pushing.
+
+## Part B2 — Water Data app key
+
+Today the CLI sends every request unkeyed: it reads no token, and its only environment
+variables are its two debug switches. dataretrieval 1.4.0 would pick up a user's own key
+from `API_USGS_PAT` or `~/.dataretrieval/config.toml`, but **users are not to provide a
+token** (decided). Instead LimnoTech will obtain an "app" key from the api.waterdata
+development team (Anthony is arranging it, 2026-11-03), and the exe carries it.
+
+- **Never in the repository.** The key lives in a GitHub Actions secret
+  (`WATERDATA_APP_KEY`). The `build-exe` job writes it into a generated, git-ignored module
+  (`src/hydrologic_toolbox_data_retrieval_cli/_app_key.py`) before PyInstaller runs, so it is
+  bundled into the exe. A local or source build without the secret writes no module and the
+  CLI runs unkeyed. The module is never committed, printed, logged or written to an output.
+- **How the CLI applies it.** Every dataretrieval call runs inside one
+  `dataretrieval.configure(api_key=...)` block opened by the CLI's entry point, so it covers
+  `create-new-project`, `add-data` and `xml-compat` alike. A `configure` block takes
+  precedence over `API_USGS_PAT` and the config file (dataretrieval 1.4.0's
+  `_configuration_core.py`), so a stray user key does not change what the exe sends
+  (*builder's call*; consistent with users not providing tokens). With no embedded key, the
+  CLI opens no block and dataretrieval's own defaults apply.
+- **Visible without being revealed.** `--debug` reports `Water Data app key: embedded` or
+  `none`, never the value. `--version` output may carry the same flag (*left to the
+  builder*).
+- **CI.** The secret is available to `build-exe` on pushes, PRs from this repository,
+  `workflow_dispatch` and tags; PRs from forks get no secrets and build unkeyed, which is
+  fine. A `live` job, if added, uses the same secret. The smoke test asserts the key state:
+  on a `v*` tag the build must report `embedded`, and fails otherwise, so a release cannot
+  ship unkeyed by accident; elsewhere either state passes, and the job log says which.
+- **Tests.** Offline tests cover both states: with a fake key, every dataretrieval call is
+  made inside a `configure` block carrying it (asserted with an exact value); with none, no
+  block is opened. No test reads the real secret.
+- **The key is extractable from the exe.** Anything bundled in a client-side program can be
+  read by someone who unpacks it. That is normal for an app key that identifies an
+  application for rate limits, but it is the USGS team's call: confirm with them, when the
+  key is issued, that an embedded key is the intended use, and how to rotate it. Record
+  their answer in AGENTS.md.
+- **Sequencing.** The round's code works with or without the key. The key must be in the
+  secret before `v0.2.0` is tagged; the tag-build assertion enforces it. Paul's test builds
+  should carry it, so he tests what will ship.
 
 ## Part C — CI (`.github/workflows/ci.yaml`)
 
@@ -359,7 +401,8 @@ shows a better seam.
    existing behaviour first. (`dataretrieval` unpinned would resolve 1.4; pin `<1.4`
    temporarily in this group, removed in group 3.)
 2. **AGENTS.md + CLAUDE.md** (Part D, except the 1.4 gotcha, which group 3 adds).
-3. **dataretrieval 1.4** (Part B): probe, code, tests, regenerated outputs, checklist.
+3. **dataretrieval 1.4** (Part B): probe, code, tests, regenerated outputs, checklist; and
+   the app key plumbing (Part B2), which needs no key to build or test.
 4. **Examples** (Part E), written against the 1.4 code.
 5. **Round end:** `pixi update`, final review, PR, Windows build to Paul.
 
