@@ -67,6 +67,14 @@ The round fails, even if every test passes, if:
 - **Stations already used by the README and tests** are the probe and test targets:
   `02225500` (discharge), `324209082430201` (gw_daily), `410947071344803` (gw_periodic), and
   the README's Georgia bounding box `-82.859 31.899 -82.013 32.947`.
+- **Private LimnoTech repositories are named in this spec as sources, not dependencies.**
+  `water-data-engine` (LimnoTech's private package for fetching and storing water data, which
+  also uses dataretrieval) and `limno-agent-skills` (LimnoTech's private guidance for AI
+  coding agents) are where several decisions here came from. `ras2xugrid` is a LimnoTech
+  repository being prepared for public release. Outside readers cannot open the first two;
+  everything this repo needs from them is written into this spec and, in Part D, into
+  AGENTS.md. Any later mention in this repo says the same: private, LimnoTech's, and named
+  only as the origin of a rule.
 
 ---
 
@@ -83,8 +91,8 @@ the reader needs of the pattern, since the skill itself is private.
    version, so the build task runs from the editable install, which writes `_version.py`.
    `__init__.py` exposes `__version__` from it.
 2. **Metadata:** `license = "MIT"`, `license-files = ["License.md"]`, no `License ::`
-   classifier. `authors`: LimnoTech and Luka Ludden. `maintainers`: Anthony Aufdenkampe
-   (`aaufdenkampe@limno.com`). `[project.urls]` for Homepage, Repository, Issues. Keywords and
+   classifier. `authors`: LimnoTech, Luka Ludden and Anthony Aufdenkampe. `maintainers`:
+   Anthony Aufdenkampe (`aaufdenkampe@limno.com`). `[project.urls]` for Homepage, Repository, Issues. Keywords and
    classifiers in ras2xugrid's style (Hydrology, GIS; `Operating System :: Microsoft ::
    Windows` alongside OS Independent is the builder's choice).
 3. **Dependencies, declared twice.** PyPI names in `[project.dependencies]`; conda names in
@@ -100,8 +108,8 @@ the reader needs of the pattern, since the skill itself is private.
    bring both numbers to the group 1 gate for Anthony to decide. The builder's recommendation
    goes with them: include pyarrow if it adds under about 30 MB to the zipped bundle and under
    0.5 s to startup, otherwise exempt the repo and record the measurement and reason in
-   AGENTS.md. If dataretrieval or geopandas
-   already pull pyarrow in transitively, it is in either way; declare it.
+   AGENTS.md. If dataretrieval or geopandas already pull pyarrow in transitively, it is in
+   either way; declare it.
 5. **Pixi workspace:** channels `["conda-forge", "nodefaults"]`; platforms
    `["linux-64", "osx-arm64", "win-64"]`, all three exercised by CI. Python pinned in `core`
    (*builder's call:* `3.12.*`, the newest PyInstaller and the stack support comfortably;
@@ -114,8 +122,15 @@ the reader needs of the pattern, since the skill itself is private.
    `build-exe` (the PyInstaller command from the README, in the `build` environment), and a
    task that runs the CLI module (`python -m hydrologic_toolbox_data_retrieval_cli`) so
    macOS users can run it without the exe.
-7. **Tool config:** `[tool.ruff]` line-length 100, `extend-exclude = ["examples"]`, select
-   `E, F, I, UP, B`. `[tool.pytest.ini_options]`: `testpaths = ["tests"]`,
+7. **Tool config:** ruff follows USGS's own `dataretrieval-python` (its `pyproject.toml` on
+   `main`, read 2026-11-05) rather than the LimnoTech repos' 100: `line-length = 88` (ruff's
+   and Black's default), `extend-exclude = ["examples"]`, and its base rule set
+   `F, E, W, I, UP, B, Q, SIM, TID, C90`. Also take its `PLW1514` (text-mode `open()`
+   without `encoding=`), which needs `preview = true` with `explicit-preview-rules = true` as
+   dataretrieval sets them: on Windows the default encoding is not UTF-8, and this CLI writes
+   text files there. dataretrieval's project-specific rules (`TC001`, `BLE001`, `ARG001`,
+   the `D10x` docstring rules) are *left to the builder*; adopt any that the baseline shows
+   are cheap. `[tool.pytest.ini_options]`: `testpaths = ["tests"]`,
    `addopts = "-ra -m 'not live'"`, the existing `live` marker. `[tool.pyrefly]` on the
    package. `[tool.jupytext] formats = "ipynb,py:percent"`.
 8. **Lint baseline.** Ruff will likely flag existing code. A reformat is its own commit
@@ -123,16 +138,16 @@ the reader needs of the pattern, since the skill itself is private.
    with a `# noqa` and a reason instead.
 9. **Commit `pixi.lock`.** Remove `pixi.lock`, `pixi.toml` and the stale `sandbox/...` lines
    from `.gitignore`. Also remove `*.spec`, which ignores the tracked PyInstaller spec. Add
-   `_version.py` and `_app_key.py` (Part B2). Check that `.pixi/` and `build/` stay ignored. The `dist/*` exclusion with
-   `!dist/outputs/` stays as it is.
+   `_version.py` and `_app_key.py` (Part B2). Check that `.pixi/` and `build/` stay ignored.
+   The `dist/*` exclusion with `!dist/outputs/` stays as it is.
 10. **`--version` flag** (*builder's call*): add `--version` to the CLI, printing the
     hatch-vcs version. It adds to the CLI surface without touching the XML/CSV/shapefile
     contract, and lets Paul confirm which build he is testing.
 
 ## Part B — dataretrieval 1.4
 
-**Probe first, then change code.** water-data-engine moved to 1.4 in its PR #82 (merged
-2026-11-01) with a probe script and log of what v1 returns. Do the same here, under
+**Probe first, then change code.** water-data-engine (private; see Constraints) moved to
+1.4 in its PR #82 (merged 2026-11-01) with a probe script and log of what v1 returns. Do the same here, under
 `examples/sandbox/dataretrieval_1_4/`: `probe.py`, its captured output `probe.out`, and
 `log.md` recording findings with dates. Probe every dataretrieval call the CLI makes
 (`get_monitoring_locations`, `get_time_series_metadata`, `get_daily`,
