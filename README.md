@@ -53,7 +53,8 @@ pixi run -e build build-exe
 The build is written to
 `dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
 
-CI builds the same artifact on Windows for every pull request into `main`.
+CI builds the same artifact on Windows for pull requests into `main`, for manual
+(`workflow_dispatch`) runs, and for `v*` tags.
 
 ## Run The CLI
 
@@ -70,10 +71,11 @@ or by full path:
 .\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
 
-## Run Without The Exe (macOS/Linux)
+## Run Without The Exe
 
-The executable is Windows-only, but the CLI itself runs anywhere pixi does. From the repo root in
-zsh or bash:
+The executable is Windows-only, but the CLI itself runs in the pixi environments, which are locked
+for linux-64, osx-arm64 and win-64. From the repo root in zsh or bash (in PowerShell or cmd on
+Windows, the same commands work):
 
 ```
 pixi install
@@ -227,6 +229,9 @@ Install [pixi](https://pixi.sh), then from the repo root:
 pixi install
 ```
 
+The `default` environment also carries the Jupyter stack (JupyterLab, jupytext, matplotlib and
+ipykernel). The leaner `ci` environment (core plus test and lint tools) is what CI uses for tests.
+
 Every task below runs with `pixi run <task>`, the same in PowerShell, cmd, zsh and bash. The
 `build-exe` task lives in the `build` environment, so it is run as `pixi run -e build build-exe`.
 
@@ -237,13 +242,21 @@ Every task below runs with `pixi run <task>`, the same in PowerShell, cmd, zsh a
 | `lint` | Runs `ruff check`. |
 | `format` | Runs `ruff format`. |
 | `typecheck` | Runs `pyrefly check`. |
-| `build-exe` | Builds the Windows executable with PyInstaller (`build` environment). |
+| `build-exe` | Builds the PyInstaller bundle for the OS it runs on, a Windows exe when run on Windows (`build` environment). It first reinstalls the project package so the bundle reports the current git version. |
 | `cli` | Runs `python -m hydrologic_toolbox_data_retrieval_cli`; pass CLI arguments after `--`. |
 
-CI runs the offline tests on every push (Ubuntu) and on pull requests into `main` (Ubuntu, macOS
-and Windows), runs the type check, and builds the Windows executable on pull requests into `main`
-and on `v*` tags. See [.github/workflows/ci.yaml](.github/workflows/ci.yaml). Release history is
-in [CHANGELOG.md](CHANGELOG.md).
+CI (see [.github/workflows/ci.yaml](.github/workflows/ci.yaml)) works like this:
+
+- On a push, Ubuntu runs the offline tests, the lint check, the format check and the type check.
+- On pull requests into `main` and on manual (`workflow_dispatch`) runs, Ubuntu, macOS and Windows
+  run the tests, lint and format check, and Ubuntu runs the type check.
+- The Windows executable build, with smoke tests and a bundle size measurement, runs on pull
+  requests into `main`, on manual runs and on `v*` tags. A `v*` tag also attaches the zip to a
+  draft GitHub Release.
+- Changes that touch only markdown files or `.gitignore` do not trigger branch or pull request
+  runs. A `v*` tag always triggers a run.
+
+Release history is in [CHANGELOG.md](CHANGELOG.md).
 
 Working with an AI coding agent? See [AGENTS.md](AGENTS.md). Runnable examples are in
 [examples/](examples/).

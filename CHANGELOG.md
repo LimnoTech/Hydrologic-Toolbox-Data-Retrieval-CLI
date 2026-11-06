@@ -17,11 +17,23 @@ None so far.
 - pixi environments `default`, `ci` and `build`, with a committed `pixi.lock`, for linux-64,
   osx-arm64 and win-64.
 - pixi tasks `test`, `test-live`, `lint`, `format`, `typecheck`, `cli` and `build-exe`.
-- A GitHub Actions workflow: offline tests on every push and on pull requests into `main` (on
-  Ubuntu, macOS and Windows for pull requests), a type check, and a Windows executable build that
-  uploads the zipped folder as an artifact and creates a draft release on `v*` tags.
-- A `Development` section, a macOS/Linux "Run without the exe" section and a `Credits` section in
-  the README.
+- A GitHub Actions workflow. On a push, Ubuntu runs the offline tests, lint, the format check
+  and the type check. On pull requests into `main` and on manual runs, Ubuntu, macOS and Windows
+  run the tests, lint and format check, with the type check on Ubuntu. A Windows executable build
+  runs on pull requests into `main`, on manual runs and on `v*` tags: it smoke-tests the exe,
+  measures the bundle, uploads the bundle folder as an artifact, and on a `v*` tag attaches the
+  zip to a draft release. Changes touching only markdown or `.gitignore` do not trigger branch or
+  pull request runs.
+- A `build-exe` step that refreshes the generated version before PyInstaller runs, so a local
+  build never embeds a stale version.
+- A test that keeps the PyPI dependency list and the conda dependency list in step, including
+  version floors and ceilings.
+- A `jupyter` extra and a matching pixi feature (JupyterLab, jupytext, matplotlib, ipykernel),
+  carried by the `default` environment.
+- Licence and project metadata in `pyproject.toml`: the MIT licence file, authors, maintainers,
+  keywords, classifiers and project URLs.
+- A `Development` section, a "Run without the exe" section and a `Credits` section in the
+  README.
 
 ### Changed
 
