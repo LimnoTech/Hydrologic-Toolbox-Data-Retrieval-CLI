@@ -15,7 +15,10 @@ name: CI
 #   Actions tab. It has its own concurrency group, so a push to the branch does
 #   not cancel it. Set `measure_pyarrow` to also build a second bundle with
 #   pyarrow added and compare the two sizes and `--help` timings in the job
-#   summary.
+#   summary. A pull request labelled `measure-pyarrow` gets the same
+#   measurement. GitHub offers `workflow_dispatch` only for a workflow file on
+#   the default branch, so until this file is on `main` the label on a draft
+#   pull request into `main` is the way to run it.
 # - A `v*` tag: the exe build, which then attaches the zip to a draft GitHub
 #   Release.
 #
@@ -50,7 +53,7 @@ on:
   workflow_dispatch:
     inputs:
       measure_pyarrow:
-        description: "Also build with pyarrow added and report both bundle sizes and --help timings"
+        description: "Also build with pyarrow added and report both bundle sizes and --help timings (a PR labelled measure-pyarrow does the same)"
         type: boolean
         default: false
 
@@ -231,8 +234,17 @@ jobs:
       # pyarrow is not in the lock, so there is nothing to exclude; the comparison is the
       # as-built bundle against one with pyarrow added. `pixi add` edits the runner's
       # manifest and lock only. That change is throwaway: nothing is committed or pushed.
+      #
+      # Runs for a manual run with `measure_pyarrow` set, or for a pull request
+      # carrying the `measure-pyarrow` label. The label must be on the PR when it
+      # is opened, or a new commit must be pushed after labelling: the `pull_request`
+      # trigger keeps its default types (opened, synchronize, reopened), and a
+      # re-run reuses the original event payload, labels included. `workflow_dispatch`
+      # only becomes available once this file is on `main`. Where there is no pull
+      # request (a tag push, a manual run), the labels expression is an empty list, so
+      # the condition is false rather than an error.
       - name: Measure with pyarrow added
-        if: inputs.measure_pyarrow
+        if: inputs.measure_pyarrow || contains(github.event.pull_request.labels.*.name, 'measure-pyarrow')
         # The rebuilt bundle may report a dirty `.dYYYYMMDD` version because `pixi add` touched
         # the manifest; that does not matter, since this bundle is only measured, never shipped.
         run: |
