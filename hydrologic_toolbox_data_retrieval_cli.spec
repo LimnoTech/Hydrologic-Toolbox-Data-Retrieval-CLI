@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 
 
 a = Analysis(
@@ -15,11 +16,12 @@ a = Analysis(
         'hydrologic_toolbox_data_retrieval_cli.station_discovery',
         'hydrologic_toolbox_data_retrieval_cli.timeseries',
         'hydrologic_toolbox_data_retrieval_cli.xml_compat',
+        'hydrologic_toolbox_data_retrieval_cli._version',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[m for m in os.environ.get('HTDR_PYINSTALLER_EXCLUDES', '').split(',') if m],
     noarchive=False,
     optimize=0,
 )

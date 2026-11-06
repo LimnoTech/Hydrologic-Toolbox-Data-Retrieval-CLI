@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import traceback
 
+from hydrologic_toolbox_data_retrieval_cli import __version__
 from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
 from hydrologic_toolbox_data_retrieval_cli.exports import format_artifact_messages
 from hydrologic_toolbox_data_retrieval_cli.station_discovery import run_create_new_project_section
@@ -95,6 +96,7 @@ def build_parser():
         prog="hydrologic-toolbox-data-retrieval-cli",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create_parser = subparsers.add_parser("create-new-project")
