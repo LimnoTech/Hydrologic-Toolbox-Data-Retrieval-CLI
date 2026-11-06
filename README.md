@@ -42,15 +42,18 @@ want and unpack it anywhere.
 
 ## Build From Source
 
-To compile the executable yourself, on Windows:
+To compile the executable yourself, on Windows, install [pixi](https://pixi.sh) and run these
+from the repo root. They work the same in PowerShell, cmd, zsh and bash:
 
-```powershell
-pip install -e ".[build]"
-pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec
+```
+pixi install -e build
+pixi run -e build build-exe
 ```
 
 The build is written to
 `dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
+
+CI builds the same artifact on Windows for every pull request into `main`.
 
 ## Run The CLI
 
@@ -66,6 +69,19 @@ or by full path:
 ```powershell
 .\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
+
+## Run Without The Exe (macOS/Linux)
+
+The executable is Windows-only, but the CLI itself runs anywhere pixi does. From the repo root in
+zsh or bash:
+
+```
+pixi install
+pixi run cli -- --help
+```
+
+Everything after `--` goes to the CLI, so `pixi run cli -- --version` and
+`pixi run cli -- xml-compat --help` work the same way.
 
 ## HydrologicToolbox XML
 
@@ -202,3 +218,36 @@ For shapefile attribute tables, the CLI maps raw Water Data field names to NWIS-
 | `hydrologic_unit_code` | `huc_cd` | `huc_cd` |
 | `drainage_area` | `drain_area_va` | `drain_area` |
 | `geometry` | `dec_lat_va` / `dec_long_va` | `dec_lat_va` / `dec_long_v` |
+
+## Development
+
+Install [pixi](https://pixi.sh), then from the repo root:
+
+```
+pixi install
+```
+
+Every task below runs with `pixi run <task>`, the same in PowerShell, cmd, zsh and bash. The
+`build-exe` task lives in the `build` environment, so it is run as `pixi run -e build build-exe`.
+
+| Task | What it does |
+| --- | --- |
+| `test` | Runs the offline test suite (tests marked `live` are deselected). |
+| `test-live` | Runs only the `live` tests, which call the live USGS Water Data endpoints. |
+| `lint` | Runs `ruff check`. |
+| `format` | Runs `ruff format`. |
+| `typecheck` | Runs `pyrefly check`. |
+| `build-exe` | Builds the Windows executable with PyInstaller (`build` environment). |
+| `cli` | Runs `python -m hydrologic_toolbox_data_retrieval_cli`; pass CLI arguments after `--`. |
+
+CI runs the offline tests on every push (Ubuntu) and on pull requests into `main` (Ubuntu, macOS
+and Windows), runs the type check, and builds the Windows executable on pull requests into `main`
+and on `v*` tags. See [.github/workflows/ci.yaml](.github/workflows/ci.yaml). Release history is
+in [CHANGELOG.md](CHANGELOG.md).
+
+Working with an AI coding agent? See [AGENTS.md](AGENTS.md). Runnable examples are in
+[examples/](examples/).
+
+## Credits
+
+Original author: Luka Ludden (LimnoTech). Maintained by Anthony Aufdenkampe (LimnoTech).
