@@ -264,10 +264,13 @@ def test_format_station_success_xml_lists_output_paths():
         }
     )
 
+    # The source renders str(Path), which uses backslashes on Windows.
+    discharge = str(Path("/tmp/NWIS_Stations_discharge.shp"))
+    gw_daily = str(Path("/tmp/NWIS_Stations_gw_daily.shp"))
     assert response == (
         "<success>"
-        '<add_shape workflow="discharge">/tmp/NWIS_Stations_discharge.shp</add_shape>'
-        '<add_shape workflow="gw_daily">/tmp/NWIS_Stations_gw_daily.shp</add_shape>'
+        f'<add_shape workflow="discharge">{discharge}</add_shape>'
+        f'<add_shape workflow="gw_daily">{gw_daily}</add_shape>'
         "</success>"
     )
 
@@ -296,9 +299,9 @@ def test_format_add_data_success_xml_lists_output_paths():
     assert response == (
         "<success>"
         '<add_data type="CSV" subtype="discharge" stationid="02336106">'
-        "/tmp/discharge_02336106.csv</add_data>"
+        f"{Path('/tmp/discharge_02336106.csv')}</add_data>"
         '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">'
-        "/tmp/gw_daily_324209082430201.csv</add_data>"
+        f"{Path('/tmp/gw_daily_324209082430201.csv')}</add_data>"
         "</success>"
     )
 
@@ -601,8 +604,9 @@ def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path:
     )
     assert "xml-compat: received XML request" in messages
     assert "xml-compat: parsed function=GetNWISDailyDischarge kind=add_data" in messages
+    output_dir = Path("/tmp/out")  # rendered with str(), so backslashes on Windows
     assert (
-        "add-data: starting workflow=discharge stations=1 output_dir=/tmp/out"
+        f"add-data: starting workflow=discharge stations=1 output_dir={output_dir}"
         in messages
     )
     assert "add-data: station 02336106 download starting" in messages
