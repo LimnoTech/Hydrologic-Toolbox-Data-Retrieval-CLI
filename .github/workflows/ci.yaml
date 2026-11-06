@@ -7,7 +7,8 @@ name: CI
 #   branch (a newer push cancels a run still in progress). The `build-exe` job
 #   does not run on a plain push.
 # - `pull_request` into `main`: Ubuntu, macOS and Windows tests, plus the
-#   Windows exe build, for the head of a PR before it merges. Ubuntu therefore
+#   Windows exe build, for the head of a PR before it merges. A PR labelled
+#   `measure-pyarrow` also gets the pyarrow measurement. Ubuntu therefore
 #   runs twice per commit there, once per event, which is accepted. PRs into
 #   other branches get no `pull_request` run: the push run already tested the
 #   same commit.
@@ -236,13 +237,14 @@ jobs:
       # manifest and lock only. That change is throwaway: nothing is committed or pushed.
       #
       # Runs for a manual run with `measure_pyarrow` set, or for a pull request
-      # carrying the `measure-pyarrow` label. The label must be on the PR when it
-      # is opened, or a new commit must be pushed after labelling: the `pull_request`
-      # trigger keeps its default types (opened, synchronize, reopened), and a
-      # re-run reuses the original event payload, labels included. `workflow_dispatch`
-      # only becomes available once this file is on `main`. Where there is no pull
-      # request (a tag push, a manual run), the labels expression is an empty list, so
-      # the condition is false rather than an error.
+      # carrying the `measure-pyarrow` label. Recommended: label the PR, then push a
+      # commit, because a re-run reuses the original event payload and the
+      # `pull_request` trigger keeps its default types (opened, synchronize,
+      # reopened). Labelling at creation may miss: a label added by `gh pr create
+      # --label` or the API can be absent from the `opened` payload.
+      # `workflow_dispatch` only becomes available once this file is on `main`. Where
+      # there is no pull request (a tag push, a manual run), the labels expression has
+      # nothing to match, so the condition is false rather than an error.
       - name: Measure with pyarrow added
         if: inputs.measure_pyarrow || contains(github.event.pull_request.labels.*.name, 'measure-pyarrow')
         # The rebuilt bundle may report a dirty `.dYYYYMMDD` version because `pixi add` touched
