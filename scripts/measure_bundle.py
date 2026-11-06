@@ -1,8 +1,9 @@
 """Zip a PyInstaller bundle and time its ``--help``; print one Markdown row.
 
 Usage: ``measure_bundle.py <bundle_dir> <exe_path> [--label TEXT]``. The zip is
-written next to ``<bundle_dir>`` as ``<bundle_dir name>.zip``. Exits non-zero
-if the exe's ``--help`` fails, after printing one line to stderr. Sizes are decimal MB
+written next to ``<bundle_dir>`` as ``<bundle_dir name>.zip``, and only after the
+exe's ``--help`` has run. Exits 1 with one line on stderr if the bundle directory or
+exe is missing, ``--help`` fails, or a file operation fails. Sizes are decimal MB
 (10^6 bytes).
 """
 
@@ -48,19 +49,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label", default="bundle")
     args = parser.parse_args(argv)
 
-    zip_path = zip_bundle(args.bundle_dir)
-    try:
-        seconds = best_help_time(args.exe_path)
-    except FileNotFoundError:
+    # Everything that can fail is checked before the zip is written, so a failure
+    # leaves no stray zip behind. Each failure is one stderr line and exit 1.
+    if not args.bundle_dir.is_dir():
+        print(
+            f"measure_bundle: bundle directory {args.bundle_dir} not found",
+            file=sys.stderr,
+        )
+        return 1
+    if not args.exe_path.is_file():
         print(f"measure_bundle: {args.exe_path} not found", file=sys.stderr)
         return 1
+    try:
+        seconds = best_help_time(args.exe_path)
+        zip_path = zip_bundle(args.bundle_dir)
+        zip_mb = zip_path.stat().st_size / 1_000_000
     except subprocess.CalledProcessError as error:
         print(
             f"measure_bundle: {args.exe_path} --help exited {error.returncode}",
             file=sys.stderr,
         )
         return 1
-    print(format_row(args.label, zip_path.stat().st_size / 1_000_000, seconds))
+    except OSError as error:
+        print(f"measure_bundle: {error}", file=sys.stderr)
+        return 1
+    print(format_row(args.label, zip_mb, seconds))
     return 0
 
 
