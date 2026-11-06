@@ -1,0 +1,234 @@
+name: CI
+
+# Which runners a commit gets depends on why the run started, because macOS
+# minutes bill at about 10x Linux and Windows at about 2x:
+#
+# - `push`, any branch: Ubuntu only, for the latest commit pushed to the
+#   branch (a newer push cancels a run still in progress). The `build-exe` job
+#   does not run on a plain push.
+# - `pull_request` into `main`: Ubuntu, macOS and Windows tests, plus the
+#   Windows exe build, for the head of a PR before it merges. Ubuntu therefore
+#   runs twice per commit there, once per event, which is accepted. PRs into
+#   other branches get no `pull_request` run: the push run already tested the
+#   same commit.
+# - `workflow_dispatch`: all three, plus the exe build, on any branch, from the
+#   Actions tab. It has its own concurrency group, so a push to the branch does
+#   not cancel it. Set `measure_pyarrow` to also build a second bundle with
+#   pyarrow added and compare the two sizes and `--help` timings in the job
+#   summary.
+# - A `v*` tag: the exe build, which then attaches the zip to a draft GitHub
+#   Release.
+#
+# The matrix expression in the `test` job implements the test split.
+#
+# This repository is public, so a fork's PR runs this file. It holds no secrets
+# and the token is read-only (`permissions` below), except in the `build-exe`
+# job, which needs `contents: write` to create a draft release and only does so
+# on a `v*` tag. Never use the `pull_request_target` trigger here: it runs with
+# write access and secrets against a fork's code.
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+  workflow_dispatch:
+    inputs:
+      measure_pyarrow:
+        description: "Also build with pyarrow added and report both bundle sizes and --help timings"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ubuntu alone on push; all three for a PR into `main` or a manual run.
+        os: ${{ fromJSON(github.event_name == 'push' && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "windows-latest"]') }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # hatch-vcs derives the version from git history, so a shallow clone
+          # would yield a bogus version and break the version test.
+          fetch-depth: 0
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0
+        with:
+          manifest-path: pyproject.toml
+          # The lean environment: core + dev, no Jupyter stack.
+          #
+          # The input is `environments`, plural. `environment` is silently
+          # ignored -- setup-pixi warns but does not fail -- and the fallback
+          # installs the *default* environment, which would solve the full
+          # Jupyter stack this job exists to avoid.
+          environments: ci
+          # Fail if pixi.lock is out of date with pyproject.toml, rather than
+          # silently re-solving. Catches a manifest edited without re-locking.
+          locked: true
+          cache: true
+
+      # Steps are kept separate so a failure names the tool that failed.
+      - name: Tests
+        # PYTHONFAULTHANDLER prints a native crash and the Python stack it happened in, even
+        # one during interpreter shutdown, after pytest has already reported every test passed.
+        # `exit $LASTEXITCODE` makes a failed test command fail the step in PowerShell; pixi
+        # still reports the code as 1.
+        env:
+          PYTHONFAULTHANDLER: "1"
+        run: |
+          pixi run -e ci test
+          exit $LASTEXITCODE
+
+      - name: Lint
+        run: pixi run -e ci lint
+
+      - name: Format
+        run: pixi run -e ci ruff format --check
+
+  # Type checking runs in `default`, on one runner only: pyrefly is static, so a
+  # three-OS matrix buys nothing a single run does not already prove.
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0
+        with:
+          manifest-path: pyproject.toml
+          environments: default
+          locked: true
+          cache: true
+
+      - name: Type check
+        run: pixi run typecheck
+
+  # Builds the Windows exe the Hydrologic Toolbox calls, smoke-tests it, and
+  # uploads the zipped folder, which is what the Toolbox maintainer downloads
+  # for testing. Not on a plain push: a PyInstaller build is slow.
+  build-exe:
+    name: build-exe (windows)
+    runs-on: windows-latest
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      # Only to create a draft release on a `v*` tag. Set here, not at the top level.
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # hatch-vcs needs history (and tags) to produce the version the exe reports.
+          fetch-depth: 0
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0
+        with:
+          manifest-path: pyproject.toml
+          environments: build
+          locked: true
+          cache: true
+
+      - name: Build exe
+        run: pixi run -e build build-exe
+
+      # Each check throws on failure. Native exit codes come from $LASTEXITCODE, which
+      # PowerShell does not turn into errors by itself.
+      - name: Smoke test the exe
+        run: |
+          $exe = "dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe"
+
+          & $exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "--help exited $LASTEXITCODE" }
+
+          $expected = (pixi run -e build python -c "from hydrologic_toolbox_data_retrieval_cli._version import __version__; print(__version__)" | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $expected) { throw "could not read the build's __version__" }
+          $actual = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "--version exited $LASTEXITCODE" }
+          if (-not ($actual -ceq $expected)) { throw "--version printed '$actual', expected '$expected'" }
+
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $tagVersion = $env:GITHUB_REF_NAME.Substring(1)
+            if (-not ($actual -ceq $tagVersion)) { throw "--version printed '$actual', the tag says '$tagVersion'" }
+          }
+
+          $out = (& $exe xml-compat --xml "<function" | Out-String).Trim()
+          if ($LASTEXITCODE -ne 1) { throw "xml-compat with a malformed request exited $LASTEXITCODE, expected 1" }
+          if ($out -notmatch '^<error>.*</error>$' -or ($out -split '\r?\n').Count -ne 1) {
+            throw "xml-compat did not print exactly one <error>...</error> line: '$out'"
+          }
+
+      - name: Measure bundle size and startup time
+        run: |
+          $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
+          "| Build | Zip (MB) | --help, best of 5 (s) |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "| --- | --- | --- |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "as built"
+          if ($LASTEXITCODE -ne 0) { throw "measure_bundle.py exited $LASTEXITCODE" }
+          $row | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      # pyarrow is not in the lock, so there is nothing to exclude; the comparison is the
+      # as-built bundle against one with pyarrow added. `pixi add` edits the runner's
+      # manifest and lock only. That change is throwaway: nothing is committed or pushed.
+      - name: Measure with pyarrow added
+        if: inputs.measure_pyarrow
+        run: |
+          $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
+          $zip = "$bundle.zip"
+          Move-Item $zip "$env:RUNNER_TEMP\as-built.zip"
+          pixi add --feature core pyarrow
+          if ($LASTEXITCODE -ne 0) { throw "pixi add exited $LASTEXITCODE" }
+          pixi run -e build build-exe
+          if ($LASTEXITCODE -ne 0) { throw "rebuild exited $LASTEXITCODE" }
+          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "pyarrow added"
+          if ($LASTEXITCODE -ne 0) { throw "measure_bundle.py exited $LASTEXITCODE" }
+          $row | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          # Put the as-built zip back, so the upload below is the shipped build.
+          Move-Item -Force "$env:RUNNER_TEMP\as-built.zip" $zip
+
+      - name: Upload exe bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hydrologic_toolbox_data_retrieval_cli-${{ github.sha }}
+          path: dist/hydrologic_toolbox_data_retrieval_cli.zip
+
+      # UNTESTED until the first real `v*` tag: it cannot run before one exists.
+      # Kept small so reading the YAML is the review.
+      - name: Draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" dist/hydrologic_toolbox_data_retrieval_cli.zip --draft --title "$env:GITHUB_REF_NAME" --notes "Draft: publish after Paul Duda has tested this build in the Hydrologic Toolbox."
+          if ($LASTEXITCODE -ne 0) { throw "gh release create exited $LASTEXITCODE" }
