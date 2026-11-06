@@ -121,7 +121,11 @@ ipykernel = "*"
 pyinstaller = "*"
 
 [tool.pixi.feature.build.tasks]
-build-exe = "pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec"
+# pixi rewrites the editable install, and with it the generated _version.py, only when the
+# manifest changes, not when HEAD moves. Reinstalling just the project package makes
+# hatch-vcs re-read git, so the exe never embeds a stale version.
+refresh-version = "pixi reinstall --locked -e build hydrologic-toolbox-data-retrieval-cli"
+build-exe = { cmd = "pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec", depends-on = ["refresh-version"] }
 
 [tool.pixi.environments]
 default = { features = ["core", "dev", "jupyter"], solve-group = "default" }
