@@ -151,6 +151,19 @@ markers = [
   "live: exercises the CLI against live Water Data endpoints",
 ]
 
+[tool.ruff]
+line-length = 88
+extend-exclude = ["examples"]
+
+[tool.ruff.format]
+exclude = ["docs/superpowers/**"]
+
+[tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
+select = ["F", "E", "W", "I", "UP", "B", "Q", "SIM", "TID", "C90", "PLW1514"]
+ignore = ["SIM105", "SIM117"]
+
 [tool.pyrefly]
 project-includes = ["src/hydrologic_toolbox_data_retrieval_cli"]
 python-version = "3.12"
