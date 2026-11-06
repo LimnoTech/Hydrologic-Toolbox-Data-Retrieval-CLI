@@ -76,7 +76,7 @@ _PERIODIC_CSV_FORCED_QUOTE_FIELDS = {
     "aquifer_type_code",
     "depth_source_code",
 }
-#https://api.waterdata.usgs.gov/docs/ogcapi/migration/
+# https://api.waterdata.usgs.gov/docs/ogcapi/migration/
 _STATION_SHAPEFILE_CROSSWALK = [
     {"source_name": "agency_code", "nwis_name": "agency_cd"},
     {"source_name": "monitoring_location_number", "nwis_name": "site_no"},
@@ -138,11 +138,21 @@ def _csv_safe_value(value):
         pass
 
     if isinstance(value, pd.Timestamp):
-        if value.hour == 0 and value.minute == 0 and value.second == 0 and value.microsecond == 0:
+        if (
+            value.hour == 0
+            and value.minute == 0
+            and value.second == 0
+            and value.microsecond == 0
+        ):
             return value.strftime("%Y-%m-%d")
         return value.isoformat()
     if isinstance(value, datetime):
-        if value.hour == 0 and value.minute == 0 and value.second == 0 and value.microsecond == 0:
+        if (
+            value.hour == 0
+            and value.minute == 0
+            and value.second == 0
+            and value.microsecond == 0
+        ):
             return value.strftime("%Y-%m-%d")
         return value.isoformat()
     if isinstance(value, date):
@@ -159,7 +169,9 @@ def _csv_escape_field(value, force_quote=False):
     """Return one CSV field with optional forced quoting."""
     text = str(_csv_safe_value(value))
     text = text.replace('"', '""')
-    needs_quote = force_quote or any(character in text for character in [",", '"', "\n", "\r"])
+    needs_quote = force_quote or any(
+        character in text for character in [",", '"', "\n", "\r"]
+    )
     if needs_quote:
         return f'"{text}"'
     return text
@@ -318,10 +330,14 @@ def _infer_shapefile_field_spec(series):
         return ("F", 18, 8)
 
     if pd.api.types.is_datetime64_any_dtype(series):
-        max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+        max_length = max(
+            (len(_dbf_text_value(value)) for value in series.dropna()), default=1
+        )
         return ("C", min(max(max_length, 1), 254), 0)
 
-    max_length = max((len(_dbf_text_value(value)) for value in series.dropna()), default=1)
+    max_length = max(
+        (len(_dbf_text_value(value)) for value in series.dropna()), default=1
+    )
     return ("C", min(max(max_length, 1), 254), 0)
 
 
@@ -347,7 +363,9 @@ def _station_shapefile_field_specs(frame):
     field_specs = []
     for entry in entries:
         field_series = _station_shapefile_series(frame, entry)
-        field_type, field_size, field_decimal = _infer_shapefile_field_spec(field_series)
+        field_type, field_size, field_decimal = _infer_shapefile_field_spec(
+            field_series
+        )
         field_specs.append(
             {
                 "source_name": entry["source_name"],
@@ -365,7 +383,9 @@ def _station_shapefile_field_specs(frame):
 def _geometry_xy(value):
     """Extract point coordinates from a shapely-like geometry value."""
     if value is None:
-        raise ValueError("Station shapefile export requires point geometry for every row.")
+        raise ValueError(
+            "Station shapefile export requires point geometry for every row."
+        )
 
     x_coord = getattr(value, "x", None)
     y_coord = getattr(value, "y", None)
@@ -410,7 +430,9 @@ def _write_station_shapefile(writer_path, frame):
         writer.point(x_coord, y_coord)
         writer.record(
             *[
-                _dbf_safe_value(_station_shapefile_value(row_mapping, spec), spec["field_type"])
+                _dbf_safe_value(
+                    _station_shapefile_value(row_mapping, spec), spec["field_type"]
+                )
                 for spec in field_specs
             ]
         )
@@ -433,14 +455,20 @@ def _write_station_shapefile_sidecars(shapefile_path, prj_text):
     shapefile_path.with_suffix(".cpg").write_text("UTF-8\n", encoding="utf-8")
 
 
-def export_station_shapefile_artifacts(frame, output_dir, file_stem, output_projection=None):
+def export_station_shapefile_artifacts(
+    frame, output_dir, file_stem, output_projection=None
+):
     """Write a shapefile with NWIS-crosswalk monitoring-location attributes and return the `.shp` path."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     shapefile_path = output_dir / f"{file_stem}.shp"
     if not isinstance(frame, gpd.GeoDataFrame):
-        raise TypeError("Station shapefile export requires a GeoDataFrame with geometry.")
-    export_frame = gpd.GeoDataFrame(frame.copy(), geometry="geometry", crs=frame.crs or "EPSG:4326")
+        raise TypeError(
+            "Station shapefile export requires a GeoDataFrame with geometry."
+        )
+    export_frame = gpd.GeoDataFrame(
+        frame.copy(), geometry="geometry", crs=frame.crs or "EPSG:4326"
+    )
     if output_projection is not None:
         export_frame = export_frame.to_crs(output_projection)
     _write_station_shapefile(shapefile_path, export_frame)
@@ -531,7 +559,9 @@ def _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata
     """Write the periodic CSV with a commented metadata block and body table."""
     periodic_frame = _prepare_periodic_timeseries_csv_frame(frame)
     header_fields = list(csv_header_metadata)
-    header_values = [_csv_safe_value(csv_header_metadata.get(key)) for key in header_fields]
+    header_values = [
+        _csv_safe_value(csv_header_metadata.get(key)) for key in header_fields
+    ]
 
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -557,7 +587,9 @@ def _write_periodic_timeseries_csv_artifact(csv_path, frame, csv_header_metadata
             writer.writerow(row)
 
 
-def _write_timeseries_csv_artifact(csv_path, frame, workflow_type, csv_header_metadata=None):
+def _write_timeseries_csv_artifact(
+    csv_path, frame, workflow_type, csv_header_metadata=None
+):
     """Write either the legacy full-frame CSV or the new reduced raw-header CSV."""
     if csv_header_metadata is None:
         frame.to_csv(csv_path, index=False)
@@ -568,7 +600,9 @@ def _write_timeseries_csv_artifact(csv_path, frame, workflow_type, csv_header_me
         return
 
     reduced_frame = _prepare_reduced_timeseries_csv_frame(frame)
-    header_values = [_csv_safe_value(csv_header_metadata.get(key)) for key in _RAW_CSV_HEADER_FIELDS]
+    header_values = [
+        _csv_safe_value(csv_header_metadata.get(key)) for key in _RAW_CSV_HEADER_FIELDS
+    ]
 
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)

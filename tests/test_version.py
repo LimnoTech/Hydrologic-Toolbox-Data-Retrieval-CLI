@@ -21,7 +21,9 @@ def test_version_flag_prints_package_version():
 
 def test_version_falls_back_without_version_module(monkeypatch):
     # A None entry in sys.modules makes `import ..._version` raise ImportError.
-    monkeypatch.setitem(sys.modules, "hydrologic_toolbox_data_retrieval_cli._version", None)
+    monkeypatch.setitem(
+        sys.modules, "hydrologic_toolbox_data_retrieval_cli._version", None
+    )
     try:
         reloaded = importlib.reload(package)
         assert reloaded.__version__ == "0.0.0"

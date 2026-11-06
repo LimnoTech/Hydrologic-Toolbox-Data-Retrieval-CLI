@@ -11,7 +11,9 @@ def _is_category(series):
 
 def test_categorize_existing_columns_converts_only_requested_existing_columns():
     """Only named columns present on the frame should become categorical."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
+    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+        categorize_existing_columns,
+    )
 
     frame = pd.DataFrame(
         {
@@ -33,7 +35,9 @@ def test_categorize_existing_columns_converts_only_requested_existing_columns():
 
 def test_categorize_existing_columns_preserves_already_categorical_columns():
     """The helper should not disturb columns that are already categorical."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
+    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+        categorize_existing_columns,
+    )
 
     frame = pd.DataFrame(
         {
@@ -52,7 +56,9 @@ def test_categorize_existing_columns_preserves_already_categorical_columns():
 
 def test_categorize_existing_columns_skips_unhashable_list_values():
     """List-valued API fields cannot be categorical values and should be left alone."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
+    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+        categorize_existing_columns,
+    )
 
     frame = pd.DataFrame(
         {
@@ -273,8 +279,14 @@ def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
 
     assert len(payload["frame"]) == 2
     assert "download: starting workflow=discharge station_id=04193500" in messages
-    assert "download: querying daily values monitoring_location_id=USGS-04193500 parameter_code=00060 date_range=1880-01-01/2100-01-01" in messages
-    assert "download: received 2 rows for workflow=discharge station_id=04193500" in messages
+    assert (
+        "download: querying daily values monitoring_location_id=USGS-04193500 parameter_code=00060 date_range=1880-01-01/2100-01-01"
+        in messages
+    )
+    assert (
+        "download: received 2 rows for workflow=discharge station_id=04193500"
+        in messages
+    )
     assert "download: querying time-series metadata" in messages
     assert "download: querying monitoring-location metadata" in messages
     assert f"download: wrote CSV {payload['files']['csv']}" in messages
@@ -296,9 +308,7 @@ def test_normalize_station_frame_returns_categorical_station_columns(monkeypatch
             "latitude": [41.5, 41.4, 41.4],
         }
     )
-    qualifying_frame = pd.DataFrame(
-        {"monitoring_location_id": ["USGS-1", "USGS-2"]}
-    )
+    qualifying_frame = pd.DataFrame({"monitoring_location_id": ["USGS-1", "USGS-2"]})
     monkeypatch.setattr(
         station_discovery,
         "_to_station_geodataframe",

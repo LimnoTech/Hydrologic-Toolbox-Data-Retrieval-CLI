@@ -10,7 +10,9 @@ from hydrologic_toolbox_data_retrieval_cli.exports import (
     export_timeseries_artifacts,
     format_artifact_messages,
 )
-from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
+from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+    categorize_existing_columns,
+)
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
@@ -68,16 +70,24 @@ def _select_matching_timeseries_metadata_row(frame, metadata_frame):
     if not isinstance(metadata_frame, pd.DataFrame) or metadata_frame.empty:
         return None
 
-    if isinstance(frame, pd.DataFrame) and not frame.empty and "time_series_id" in frame.columns:
+    if (
+        isinstance(frame, pd.DataFrame)
+        and not frame.empty
+        and "time_series_id" in frame.columns
+    ):
         daily_time_series_id = frame.iloc[0].get("time_series_id")
-        matches = metadata_frame.loc[metadata_frame["time_series_id"] == daily_time_series_id]
+        matches = metadata_frame.loc[
+            metadata_frame["time_series_id"] == daily_time_series_id
+        ]
         if not matches.empty:
             return matches.iloc[0]
 
     return metadata_frame.iloc[0]
 
 
-def _select_matching_monitoring_location_row(monitoring_location_id, monitoring_locations_frame):
+def _select_matching_monitoring_location_row(
+    monitoring_location_id, monitoring_locations_frame
+):
     """Prefer the monitoring-location row that matches the exported station id."""
     if (
         not isinstance(monitoring_locations_frame, pd.DataFrame)
@@ -87,7 +97,8 @@ def _select_matching_monitoring_location_row(monitoring_location_id, monitoring_
 
     if "monitoring_location_id" in monitoring_locations_frame.columns:
         matches = monitoring_locations_frame.loc[
-            monitoring_locations_frame["monitoring_location_id"] == monitoring_location_id
+            monitoring_locations_frame["monitoring_location_id"]
+            == monitoring_location_id
         ]
         if not matches.empty:
             return matches.iloc[0]
@@ -154,11 +165,13 @@ def _set_header_value(mapping, key, value):
 
 def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame):
     """Build the raw API-derived metadata mapping for the reduced CSV export."""
-    frame_row = frame.iloc[0] if isinstance(frame, pd.DataFrame) and not frame.empty else None
-    metadata_row = _select_matching_timeseries_metadata_row(frame, metadata_frame)
-    monitoring_location_id = _row_value(metadata_row, "monitoring_location_id") or _row_value(
-        frame_row, "monitoring_location_id"
+    frame_row = (
+        frame.iloc[0] if isinstance(frame, pd.DataFrame) and not frame.empty else None
     )
+    metadata_row = _select_matching_timeseries_metadata_row(frame, metadata_frame)
+    monitoring_location_id = _row_value(
+        metadata_row, "monitoring_location_id"
+    ) or _row_value(frame_row, "monitoring_location_id")
     monitoring_location_row = _select_matching_monitoring_location_row(
         monitoring_location_id,
         monitoring_locations_frame,
@@ -173,7 +186,9 @@ def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame
         "IV_TS_ID": _row_value(metadata_row, "parent_time_series_id"),
         "Description": _row_value(metadata_row, "parameter_description"),
         "site_no": monitoring_location_id,
-        "Site number": _row_value(monitoring_location_row, "monitoring_location_number"),
+        "Site number": _row_value(
+            monitoring_location_row, "monitoring_location_number"
+        ),
         "Station name": _row_value(monitoring_location_row, "monitoring_location_name"),
         "Latitude": _monitoring_location_coordinate(monitoring_location_row, "lat"),
         "Longitude": _monitoring_location_coordinate(monitoring_location_row, "lon"),
@@ -182,7 +197,9 @@ def _build_csv_header_metadata(frame, metadata_frame, monitoring_locations_frame
     }
 
 
-def _build_periodic_csv_header_metadata(monitoring_location_id, monitoring_locations_frame):
+def _build_periodic_csv_header_metadata(
+    monitoring_location_id, monitoring_locations_frame
+):
     """Build the modern Water Data metadata mapping for the periodic CSV export."""
     monitoring_location_row = _select_matching_monitoring_location_row(
         monitoring_location_id,
@@ -328,7 +345,9 @@ def get_usgs_timeseries(
         from dataretrieval import waterdata as waterdata_module
 
     monitoring_location_id = _normalize_monitoring_location_id(station_id)
-    effective_parameter_code = "00060" if workflow_type == "discharge" else parameter_code
+    effective_parameter_code = (
+        "00060" if workflow_type == "discharge" else parameter_code
+    )
     if debug_logger is not None:
         debug_logger(
             f"download: starting workflow={workflow_type} station_id={station_id}"

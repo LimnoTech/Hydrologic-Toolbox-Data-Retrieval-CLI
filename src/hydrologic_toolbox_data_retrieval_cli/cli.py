@@ -12,7 +12,9 @@ import traceback
 from hydrologic_toolbox_data_retrieval_cli import __version__
 from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
 from hydrologic_toolbox_data_retrieval_cli.exports import format_artifact_messages
-from hydrologic_toolbox_data_retrieval_cli.station_discovery import run_create_new_project_section
+from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
+    run_create_new_project_section,
+)
 from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 

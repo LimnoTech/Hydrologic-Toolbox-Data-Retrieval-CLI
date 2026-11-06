@@ -138,7 +138,9 @@ def test_version_constraints_are_declared_on_both_sides(pyproject, feature, extr
     }
     conda_specifiers = {
         normalize(name): conda_specifier(spec)
-        for name, spec in pyproject["tool"]["pixi"]["feature"][feature]["dependencies"].items()
+        for name, spec in pyproject["tool"]["pixi"]["feature"][feature][
+            "dependencies"
+        ].items()
     }
 
     lopsided = {
@@ -222,10 +224,14 @@ def test_bounds_match(pyproject, feature, extra):
         requirements = pyproject["project"]["dependencies"]
     else:
         requirements = pyproject["project"]["optional-dependencies"][extra]
-    pypi_raw = {normalize(requirement_name(r)): requirement_specifier(r) for r in requirements}
+    pypi_raw = {
+        normalize(requirement_name(r)): requirement_specifier(r) for r in requirements
+    }
     conda_raw = {
         normalize(name): conda_specifier(spec)
-        for name, spec in pyproject["tool"]["pixi"]["feature"][feature]["dependencies"].items()
+        for name, spec in pyproject["tool"]["pixi"]["feature"][feature][
+            "dependencies"
+        ].items()
     }
     mismatched = {
         name: (pypi_raw[name], conda_raw[name])

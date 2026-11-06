@@ -127,7 +127,15 @@ def test_run_cli_command_uses_current_python_interpreter(monkeypatch):
         ["create-new-project"],
         ["create-new-project", "--wf", "bogus"],
         ["create-new-project", "--wf", "discharge"],
-        ["create-new-project", "--wf", "discharge", "--bbox", "-82.859", "31.899", "-82.013"],
+        [
+            "create-new-project",
+            "--wf",
+            "discharge",
+            "--bbox",
+            "-82.859",
+            "31.899",
+            "-82.013",
+        ],
         ["create-new-project", "--wf", "discharge", "--unknown"],
     ],
     ids=[
@@ -219,8 +227,16 @@ def test_help_surface_for_add_data(capsys):
         (["gw_daily"], ["daily"], ["gw_daily"]),
         (["gw_periodic"], ["periodic"], ["gw_periodic"]),
         (["discharge", "gw_daily"], ["discharge", "daily"], ["discharge", "gw_daily"]),
-        (["discharge", "gw_periodic"], ["discharge", "periodic"], ["discharge", "gw_periodic"]),
-        (["gw_daily", "gw_periodic"], ["daily", "periodic"], ["gw_daily", "gw_periodic"]),
+        (
+            ["discharge", "gw_periodic"],
+            ["discharge", "periodic"],
+            ["discharge", "gw_periodic"],
+        ),
+        (
+            ["gw_daily", "gw_periodic"],
+            ["daily", "periodic"],
+            ["gw_daily", "gw_periodic"],
+        ),
         (
             ["discharge", "gw_daily", "gw_periodic"],
             ["discharge", "daily", "periodic"],
@@ -255,7 +271,9 @@ def test_live_create_new_project_workflow_combinations(
 
     assert result.returncode == 0, result.stderr or result.stdout
     for label in expected_labels:
-        assert re.search(rf"{re.escape(label)}: \d+ stations", result.stdout), result.stdout
+        assert re.search(rf"{re.escape(label)}: \d+ stations", result.stdout), (
+            result.stdout
+        )
     for stem in expected_stems:
         assert_shapefile_set_exists(output_dir, stem)
 
@@ -351,7 +369,9 @@ def test_live_add_data_workflows(
     result = run_cli_command(*args)
 
     assert result.returncode == 0, result.stderr or result.stdout
-    assert re.search(rf"{re.escape(expected_label)}: \d+ rows", result.stdout), result.stdout
+    assert re.search(rf"{re.escape(expected_label)}: \d+ rows", result.stdout), (
+        result.stdout
+    )
 
     csv_path = output_dir / expected_file_name
     assert csv_path.exists()

@@ -10,7 +10,9 @@ from hydrologic_toolbox_data_retrieval_cli.exports import (
     export_station_shapefile_artifacts,
     format_artifact_messages,
 )
-from hydrologic_toolbox_data_retrieval_cli.frame_types import categorize_existing_columns
+from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+    categorize_existing_columns,
+)
 
 
 _INFER_FORMAT_WARNING_PATTERN = (
@@ -68,7 +70,9 @@ def _to_station_geodataframe(frame):
 
     existing_geometry = station_frame.get("geometry")
     if existing_geometry is not None and existing_geometry.notna().any():
-        geometry = gpd.GeoSeries(existing_geometry, index=station_frame.index, crs="EPSG:4326")
+        geometry = gpd.GeoSeries(
+            existing_geometry, index=station_frame.index, crs="EPSG:4326"
+        )
         station_frame = station_frame.drop(columns=["geometry"])
     else:
         longitude_column = None
@@ -76,15 +80,26 @@ def _to_station_geodataframe(frame):
         if "longitude" in station_frame.columns and "latitude" in station_frame.columns:
             longitude_column = "longitude"
             latitude_column = "latitude"
-        elif "dec_long_va" in station_frame.columns and "dec_lat_va" in station_frame.columns:
+        elif (
+            "dec_long_va" in station_frame.columns
+            and "dec_lat_va" in station_frame.columns
+        ):
             longitude_column = "dec_long_va"
             latitude_column = "dec_lat_va"
 
-        geometry_values = pd.Series([None] * len(station_frame), index=station_frame.index)
+        geometry_values = pd.Series(
+            [None] * len(station_frame), index=station_frame.index
+        )
         if longitude_column is None or latitude_column is None:
-            valid_geometry = pd.Series([False] * len(station_frame), index=station_frame.index)
-            longitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
-            latitude_values = pd.Series([pd.NA] * len(station_frame), index=station_frame.index)
+            valid_geometry = pd.Series(
+                [False] * len(station_frame), index=station_frame.index
+            )
+            longitude_values = pd.Series(
+                [pd.NA] * len(station_frame), index=station_frame.index
+            )
+            latitude_values = pd.Series(
+                [pd.NA] * len(station_frame), index=station_frame.index
+            )
         else:
             longitude_values = pd.to_numeric(
                 station_frame[longitude_column],
@@ -103,7 +118,9 @@ def _to_station_geodataframe(frame):
                     latitude_values.loc[valid_geometry],
                 )
             )
-        geometry = gpd.GeoSeries(geometry_values, index=station_frame.index, crs="EPSG:4326")
+        geometry = gpd.GeoSeries(
+            geometry_values, index=station_frame.index, crs="EPSG:4326"
+        )
 
     return gpd.GeoDataFrame(station_frame, geometry=geometry, crs="EPSG:4326")
 
