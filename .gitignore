@@ -2,7 +2,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 outputs/*
-build/*# pixi environments
+build/*
+# pixi environments
 .pixi/*
 !.pixi/config.toml
 build/*

@@ -167,8 +167,9 @@ preview = true
 explicit-preview-rules = true
 select = [
   "F", "E", "W", "I", "UP", "B", "Q", "SIM", "TID", "C90", "PLW1514",
-  # Adopted beyond dataretrieval-python's set: each is at or under the
-  # five-finding threshold and fixed without a behaviour change.
+  # Adopted beyond dataretrieval-python's set. Before the baseline fix, each had 0-4
+  # findings (D103: 4, D100: 1, the rest 0), under the five-finding threshold, and
+  # each was fixed without a behaviour change.
   "TC001", "D100", "D101", "D102", "D103", "D104",
 ]
 ignore = ["SIM105", "SIM117"]
