@@ -416,13 +416,18 @@ def _write_station_shapefile(writer_path, frame):
     """Write the NWIS-crosswalk point shapefile payload using a pure-Python writer."""
     field_specs = _station_shapefile_field_specs(frame)
     writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
+    # pyrefly: ignore[bad-assignment]
     writer.autoBalance = 1
 
     for spec in field_specs:
         writer.field(
+            # pyrefly: ignore[bad-argument-type]
             spec["field_name"],
+            # pyrefly: ignore[bad-argument-type]
             spec["field_type"],
+            # pyrefly: ignore[bad-argument-type]
             size=spec["field_size"],
+            # pyrefly: ignore[bad-argument-type]
             decimal=spec["field_decimal"],
         )
 
