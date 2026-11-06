@@ -128,7 +128,8 @@ _WGS84_PRJ = (
 )
 
 
-def _csv_safe_value(value):  # noqa: C901  branching mirrors the CSV value contract; splitting it risks changing output
+# Branching mirrors the CSV value contract; splitting it risks changing output.
+def _csv_safe_value(value):  # noqa: C901
     """Convert export values into CSV-friendly Python scalars."""
     if value is None:
         return ""
@@ -416,17 +417,22 @@ def _write_station_shapefile(writer_path, frame):
     """Write the NWIS-crosswalk point shapefile payload using a pure-Python writer."""
     field_specs = _station_shapefile_field_specs(frame)
     writer = shapefile.Writer(str(writer_path), shapeType=shapefile.POINT)
+    # pyshp declares bool; the int is accepted.
     # pyrefly: ignore[bad-assignment]
     writer.autoBalance = 1
 
     for spec in field_specs:
         writer.field(
+            # Heterogeneous field-spec dict, so pyrefly infers a union.
             # pyrefly: ignore[bad-argument-type]
             spec["field_name"],
+            # Heterogeneous field-spec dict, so pyrefly infers a union.
             # pyrefly: ignore[bad-argument-type]
             spec["field_type"],
+            # Heterogeneous field-spec dict, so pyrefly infers a union.
             # pyrefly: ignore[bad-argument-type]
             size=spec["field_size"],
+            # Heterogeneous field-spec dict, so pyrefly infers a union.
             # pyrefly: ignore[bad-argument-type]
             decimal=spec["field_decimal"],
         )

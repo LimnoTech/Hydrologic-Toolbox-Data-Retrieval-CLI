@@ -329,7 +329,8 @@ def _build_periodic_csv_header_metadata(
     return header_metadata
 
 
-def get_usgs_timeseries(  # noqa: C901  one linear download-and-export sequence; splitting it is a refactor, not a lint fix
+# One linear download-and-export sequence; splitting it is a refactor, not a lint fix.
+def get_usgs_timeseries(  # noqa: C901
     station_id,
     workflow_type,
     output_dir,

@@ -315,11 +315,13 @@ def _handle_xml_request_mapping(request, debug_logger=None) -> list[str]:
         for workflow, payload in results.items():
             _debug(
                 debug_logger,
+                # run_create_new_project_section returns an untyped dict.
                 # pyrefly: ignore[bad-index]
                 f"station-discovery: workflow={workflow} "
                 f"wrote {payload['files']['shp']}",
             )
         return format_station_success_entries(
+            # Same untyped dict as above.
             # pyrefly: ignore[bad-argument-type, bad-index]
             {workflow: payload["files"]["shp"] for workflow, payload in results.items()}
         )
