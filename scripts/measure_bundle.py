@@ -2,7 +2,8 @@
 
 Usage: ``measure_bundle.py <bundle_dir> <exe_path> [--label TEXT]``. The zip is
 written next to ``<bundle_dir>`` as ``<bundle_dir name>.zip``. Exits non-zero
-if the exe's ``--help`` fails.
+if the exe's ``--help`` fails, after printing one line to stderr. Sizes are decimal MB
+(10^6 bytes).
 """
 
 from __future__ import annotations
@@ -48,7 +49,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     zip_path = zip_bundle(args.bundle_dir)
-    seconds = best_help_time(args.exe_path)
+    try:
+        seconds = best_help_time(args.exe_path)
+    except FileNotFoundError:
+        print(f"measure_bundle: {args.exe_path} not found", file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as error:
+        print(
+            f"measure_bundle: {args.exe_path} --help exited {error.returncode}",
+            file=sys.stderr,
+        )
+        return 1
     print(format_row(args.label, zip_path.stat().st_size / 1_000_000, seconds))
     return 0
 

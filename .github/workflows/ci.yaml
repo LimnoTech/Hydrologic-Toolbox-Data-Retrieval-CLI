@@ -26,6 +26,9 @@ name: CI
 # job, which needs `contents: write` to create a draft release and only does so
 # on a `v*` tag. Never use the `pull_request_target` trigger here: it runs with
 # write access and secrets against a fork's code.
+#
+# GitHub does not evaluate `paths-ignore` for a tag push, so a `v*` tag always triggers
+# this workflow, even if the tagged commit only touched markdown.
 on:
   push:
     branches:
@@ -185,14 +188,18 @@ jobs:
 
           $out = (& $exe xml-compat --xml "<function" | Out-String).Trim()
           if ($LASTEXITCODE -ne 1) { throw "xml-compat with a malformed request exited $LASTEXITCODE, expected 1" }
-          if ($out -notmatch '^<error>.*</error>$' -or ($out -split '\r?\n').Count -ne 1) {
+          if ($out -cnotmatch '^<error>.*</error>$' -or ($out -split '\r?\n').Count -ne 1) {
             throw "xml-compat did not print exactly one <error>...</error> line: '$out'"
           }
+
+          # The runner appends "exit $LASTEXITCODE" to a pwsh script, and the last native call
+          # above is the deliberate failure (exit 1), so end the step with an explicit success.
+          exit 0
 
       - name: Measure bundle size and startup time
         run: |
           $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
-          "| Build | Zip (MB) | --help, best of 5 (s) |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "| Build | Zip (MB, 10^6 bytes) | --help, best of 5 (s) |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           "| --- | --- | --- |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "as built"
           if ($LASTEXITCODE -ne 0) { throw "measure_bundle.py exited $LASTEXITCODE" }
@@ -203,6 +210,8 @@ jobs:
       # manifest and lock only. That change is throwaway: nothing is committed or pushed.
       - name: Measure with pyarrow added
         if: inputs.measure_pyarrow
+        # The rebuilt bundle may report a dirty `.dYYYYMMDD` version because `pixi add` touched
+        # the manifest; that does not matter, since this bundle is only measured, never shipped.
         run: |
           $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
           $zip = "$bundle.zip"
