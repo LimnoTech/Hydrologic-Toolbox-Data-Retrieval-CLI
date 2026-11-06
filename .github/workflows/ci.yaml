@@ -19,6 +19,9 @@ name: CI
 # - A `v*` tag: the exe build, which then attaches the zip to a draft GitHub
 #   Release.
 #
+# The `typecheck` job runs on every triggering event, on Ubuntu only: pyrefly is
+# static, so one runner is enough.
+#
 # The matrix expression in the `test` job implements the test split.
 #
 # This repository is public, so a fork's PR runs this file. It holds no secrets
