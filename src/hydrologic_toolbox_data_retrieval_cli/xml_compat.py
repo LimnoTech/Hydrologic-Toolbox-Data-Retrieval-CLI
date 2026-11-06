@@ -6,6 +6,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from pyproj import CRS, Transformer
+
 from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
 from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
     run_create_new_project_section,
@@ -265,7 +266,8 @@ def format_add_data_success_xml(result_entries) -> str:
 def format_add_data_success_entries(result_entries) -> list[str]:
     """Return add-data XML success elements."""
     return [
-        f'<add_data type="CSV" subtype="{entry["workflow"]}" stationid="{entry["stationid"]}">{Path(entry["path"])}</add_data>'
+        f'<add_data type="CSV" subtype="{entry["workflow"]}" '
+        f'stationid="{entry["stationid"]}">{Path(entry["path"])}</add_data>'
         for entry in result_entries
     ]
 
@@ -284,7 +286,8 @@ def handle_xml_request(xml_text: str, debug_logger=None) -> str:
     for request in requests:
         _debug(
             debug_logger,
-            f"xml-compat: parsed function={request['function_name']} kind={request['kind']}",
+            f"xml-compat: parsed function={request['function_name']} "
+            f"kind={request['kind']}",
         )
         success_entries.extend(_handle_xml_request_mapping(request, debug_logger))
     if success_entries:
@@ -312,7 +315,8 @@ def _handle_xml_request_mapping(request, debug_logger=None) -> list[str]:
         for workflow, payload in results.items():
             _debug(
                 debug_logger,
-                f"station-discovery: workflow={workflow} wrote {payload['files']['shp']}",
+                f"station-discovery: workflow={workflow} "
+                f"wrote {payload['files']['shp']}",
             )
         return format_station_success_entries(
             {workflow: payload["files"]["shp"] for workflow, payload in results.items()}

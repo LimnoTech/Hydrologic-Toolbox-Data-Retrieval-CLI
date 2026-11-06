@@ -149,7 +149,7 @@ def test_get_usgs_timeseries_returns_categorical_repeated_columns(tmp_path):
 
 
 def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
-    """Daily responses can contain list-valued qualifiers that must not be categorized."""
+    """Daily responses can hold list-valued qualifiers; do not categorize them."""
     from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 
     class FakeWaterdata:
@@ -216,7 +216,7 @@ def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
 
 
 def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
-    """The download layer should report request, response, metadata, and export steps."""
+    """The download layer reports request, response, metadata, and export steps."""
     from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 
     messages = []
@@ -280,8 +280,8 @@ def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
     assert len(payload["frame"]) == 2
     assert "download: starting workflow=discharge station_id=04193500" in messages
     assert (
-        "download: querying daily values monitoring_location_id=USGS-04193500 parameter_code=00060 date_range=1880-01-01/2100-01-01"
-        in messages
+        "download: querying daily values monitoring_location_id=USGS-04193500 "
+        "parameter_code=00060 date_range=1880-01-01/2100-01-01" in messages
     )
     assert (
         "download: received 2 rows for workflow=discharge station_id=04193500"

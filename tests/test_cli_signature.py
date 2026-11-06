@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -379,8 +378,8 @@ def test_live_add_data_workflows(
     if uses_reduced_header:
         lines = read_first_lines(csv_path)
         assert (
-            lines[0]
-            == "# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID,Site number,Station name,Latitude,Longitude,HUC code,Drainage area"
+            lines[0] == "# site_no,Description,Parameter,Statistic,TS_ID,IV_TS_ID,"
+            "Site number,Station name,Latitude,Longitude,HUC code,Drainage area"
         )
         assert lines[1].startswith("# ")
         assert lines[2] == "Time,Daily values,Approval status,Qualifier"

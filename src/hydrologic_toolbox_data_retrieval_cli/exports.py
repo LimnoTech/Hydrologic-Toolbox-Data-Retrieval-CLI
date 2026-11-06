@@ -1,3 +1,5 @@
+"""CSV and shapefile writers for the Toolbox workflow outputs."""
+
 from __future__ import annotations
 
 import csv
@@ -6,8 +8,8 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-from pyproj import CRS
 import shapefile
+from pyproj import CRS
 
 _RAW_CSV_HEADER_FIELDS = [
     "site_no",
@@ -126,7 +128,7 @@ _WGS84_PRJ = (
 )
 
 
-def _csv_safe_value(value):
+def _csv_safe_value(value):  # noqa: C901  branching mirrors the CSV value contract; splitting it risks changing output
     """Convert export values into CSV-friendly Python scalars."""
     if value is None:
         return ""
@@ -183,7 +185,7 @@ def _format_csv_line(values, forced_quote_fields=None, field_names=None):
     field_names = field_names or [None] * len(values)
     formatted_values = [
         _csv_escape_field(value, force_quote=field_name in forced_quote_fields)
-        for value, field_name in zip(values, field_names)
+        for value, field_name in zip(values, field_names, strict=False)
     ]
     return ",".join(formatted_values)
 
@@ -458,7 +460,10 @@ def _write_station_shapefile_sidecars(shapefile_path, prj_text):
 def export_station_shapefile_artifacts(
     frame, output_dir, file_stem, output_projection=None
 ):
-    """Write a shapefile with NWIS-crosswalk monitoring-location attributes and return the `.shp` path."""
+    """Write a shapefile with NWIS-crosswalk monitoring-location attributes.
+
+    Returns the `.shp` path.
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     shapefile_path = output_dir / f"{file_stem}.shp"

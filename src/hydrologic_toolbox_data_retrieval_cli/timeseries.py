@@ -8,12 +8,10 @@ import pandas as pd
 
 from hydrologic_toolbox_data_retrieval_cli.exports import (
     export_timeseries_artifacts,
-    format_artifact_messages,
 )
 from hydrologic_toolbox_data_retrieval_cli.frame_types import (
     categorize_existing_columns,
 )
-
 
 _INFER_FORMAT_WARNING_PATTERN = (
     r"Could not infer format, so each element will be parsed individually.*"
@@ -331,7 +329,7 @@ def _build_periodic_csv_header_metadata(
     return header_metadata
 
 
-def get_usgs_timeseries(
+def get_usgs_timeseries(  # noqa: C901  one linear download-and-export sequence; splitting it is a refactor, not a lint fix
     station_id,
     workflow_type,
     output_dir,
@@ -356,12 +354,10 @@ def get_usgs_timeseries(
     if workflow_type in {"discharge", "gw_daily"}:
         if debug_logger is not None:
             debug_logger(
-                (
-                    "download: querying daily values "
-                    f"monitoring_location_id={monitoring_location_id} "
-                    f"parameter_code={effective_parameter_code} "
-                    f"date_range={date_range[0]}/{date_range[1]}"
-                )
+                "download: querying daily values "
+                f"monitoring_location_id={monitoring_location_id} "
+                f"parameter_code={effective_parameter_code} "
+                f"date_range={date_range[0]}/{date_range[1]}"
             )
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_daily,
@@ -372,12 +368,10 @@ def get_usgs_timeseries(
     elif workflow_type == "gw_periodic":
         if debug_logger is not None:
             debug_logger(
-                (
-                    "download: querying field measurements "
-                    f"monitoring_location_id={monitoring_location_id} "
-                    f"parameter_code={effective_parameter_code} "
-                    f"date_range={date_range[0]}/{date_range[1]}"
-                )
+                "download: querying field measurements "
+                f"monitoring_location_id={monitoring_location_id} "
+                f"parameter_code={effective_parameter_code} "
+                f"date_range={date_range[0]}/{date_range[1]}"
             )
         frame, metadata = _call_waterdata_with_filtered_datetime_warning(
             waterdata_module.get_field_measurements,
@@ -390,10 +384,8 @@ def get_usgs_timeseries(
 
     if debug_logger is not None:
         debug_logger(
-            (
-                f"download: received {len(frame)} rows "
-                f"for workflow={workflow_type} station_id={station_id}"
-            )
+            f"download: received {len(frame)} rows "
+            f"for workflow={workflow_type} station_id={station_id}"
         )
 
     metadata_dict = metadata if isinstance(metadata, dict) else vars(metadata).copy()

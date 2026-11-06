@@ -10,6 +10,7 @@ import hydrologic_toolbox_data_retrieval_cli as package
 
 
 def test_version_flag_prints_package_version():
+    """``--version`` prints exactly the package version and a newline."""
     result = subprocess.run(
         [sys.executable, "-m", "hydrologic_toolbox_data_retrieval_cli", "--version"],
         capture_output=True,
@@ -20,6 +21,7 @@ def test_version_flag_prints_package_version():
 
 
 def test_version_falls_back_without_version_module(monkeypatch):
+    """Without a generated ``_version`` module the version is ``0.0.0``."""
     # A None entry in sys.modules makes `import ..._version` raise ImportError.
     monkeypatch.setitem(
         sys.modules, "hydrologic_toolbox_data_retrieval_cli._version", None

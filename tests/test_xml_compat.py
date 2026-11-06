@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 import geopandas as gpd
-from pyproj import CRS, Transformer
 import pytest
 import shapefile
+from pyproj import CRS, Transformer
 from shapely.geometry import Point
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -295,8 +295,10 @@ def test_format_add_data_success_xml_lists_output_paths():
 
     assert response == (
         "<success>"
-        '<add_data type="CSV" subtype="discharge" stationid="02336106">/tmp/discharge_02336106.csv</add_data>'
-        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">/tmp/gw_daily_324209082430201.csv</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        "/tmp/discharge_02336106.csv</add_data>"
+        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">'
+        "/tmp/gw_daily_324209082430201.csv</add_data>"
         "</success>"
     )
 
@@ -322,7 +324,9 @@ def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
         frame,
         tmp_path,
         "stations",
-        output_projection="+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs",
+        output_projection=(
+            "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+        ),
     )
 
     prj_text = output["shp"].with_suffix(".prj").read_text(encoding="utf-8")
@@ -423,8 +427,10 @@ def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: 
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_a}</add_data>'
-        f'<add_data type="CSV" subtype="discharge" stationid="02336107">{expected_b}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        f"{expected_a}</add_data>"
+        '<add_data type="CSV" subtype="discharge" stationid="02336107">'
+        f"{expected_b}</add_data>"
         "</success>"
     )
 
@@ -479,7 +485,8 @@ def test_handle_xml_request_bundle_uses_valid_add_data_function(
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_csv}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02357150">'
+        f"{expected_csv}</add_data>"
         "</success>"
     )
     assert "xml-compat: found 2 function blocks" in messages
@@ -493,7 +500,7 @@ def test_handle_xml_request_bundle_uses_valid_add_data_function(
 def test_handle_xml_request_bundle_combines_add_data_results(
     monkeypatch, tmp_path: Path
 ):
-    """Multiple valid add-data function blocks should return one combined success XML."""
+    """Multiple valid add-data function blocks return one combined success XML."""
     from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_discharge = tmp_path / "discharge_02357150.csv"
@@ -541,8 +548,10 @@ def test_handle_xml_request_bundle_combines_add_data_results(
     ]
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_discharge}</add_data>'
-        f'<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">{expected_daily}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02357150">'
+        f"{expected_discharge}</add_data>"
+        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">'
+        f"{expected_daily}</add_data>"
         "</success>"
     )
 
@@ -586,7 +595,8 @@ def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path:
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_csv}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        f"{expected_csv}</add_data>"
         "</success>"
     )
     assert "xml-compat: received XML request" in messages

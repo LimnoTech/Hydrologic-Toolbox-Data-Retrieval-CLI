@@ -14,7 +14,6 @@ from hydrologic_toolbox_data_retrieval_cli.frame_types import (
     categorize_existing_columns,
 )
 
-
 _INFER_FORMAT_WARNING_PATTERN = (
     r"Could not infer format, so each element will be parsed individually.*"
 )
@@ -126,7 +125,7 @@ def _to_station_geodataframe(frame):
 
 
 def _normalize_station_frame(candidate_frame, qualifying_frame, workflow_type):
-    """Filter discovered stations while preserving the raw monitoring-location schema."""
+    """Filter discovered stations, keeping the raw monitoring-location schema."""
     candidate_ids = set(candidate_frame["monitoring_location_id"])
     qualifying_ids = set(qualifying_frame["monitoring_location_id"])
     frame = candidate_frame[
