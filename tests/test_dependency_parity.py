@@ -4,7 +4,7 @@
 on purpose:
 
 * ``[project.dependencies]`` states the contract in PyPI names, so the wheel is
-  honest and downstream repositories can consume it as a git dependency.
+  honest.
 * ``[tool.pixi.feature.*.dependencies]`` supplies the actual environment from
   conda-forge, including packages with no usable PyPI distribution.
 
@@ -122,43 +122,6 @@ def test_every_conda_dependency_is_declared_or_allowlisted(pyproject, feature, e
     )
 
 
-@pytest.mark.parametrize(("feature", "extra"), sorted(FEATURE_TO_EXTRA.items()))
-def test_version_constraints_are_declared_on_both_sides(pyproject, feature, extra):
-    """A floor pinned in only one half makes the other half's promise wrong.
-
-    The two tests above compare *names* and stop there, so
-    ``colorcet = ">=3.2.1,<4"`` in the pixi feature beside a bare ``"colorcet"``
-    in the extra passes them both -- and the wheel then claims to work with a
-    version the environment forbids. This does not compare specifier *syntax*,
-    which legitimately differs between conda and PEP 508; it asserts only that a
-    package constrained on one side is constrained on the other, which is where
-    the drift that matters shows up.
-    """
-    if extra is None:
-        requirements = pyproject["project"]["dependencies"]
-    else:
-        requirements = pyproject["project"]["optional-dependencies"][extra]
-    pypi_specifiers = {
-        normalize(requirement_name(r)): requirement_specifier(r) for r in requirements
-    }
-    conda_specifiers = {
-        normalize(name): conda_specifier(spec)
-        for name, spec in pyproject["tool"]["pixi"]["feature"][feature][
-            "dependencies"
-        ].items()
-    }
-
-    lopsided = {
-        name: (pypi_specifiers[name] or "(none)", conda_specifiers[name] or "(none)")
-        for name in pypi_specifiers.keys() & conda_specifiers.keys()
-        if bool(pypi_specifiers[name]) != bool(conda_specifiers[name])
-    }
-    assert not lopsided, (
-        f"'{feature}' feature and its extra disagree on whether a package is version-"
-        f"constrained (PyPI, conda): {lopsided}. Constrain both halves or neither."
-    )
-
-
 def test_allowlists_contain_no_dead_entries(pyproject):
     """Stop the allowlists rotting into a place where exceptions hide forever."""
     all_conda = set()
@@ -211,10 +174,27 @@ def test_feature_to_extra_map_is_complete(pyproject):
 
 
 def bounds(spec: str) -> tuple[str | None, str | None]:
-    """The ``>=X`` and ``<Y`` versions of a PEP 508 or conda spec, else None."""
-    lower = re.search(r">=\s*([^,\s;]+)", spec)
-    upper = re.search(r"(?<![<>=!~])<\s*([^,\s;=]+)", spec)
-    return (lower.group(1) if lower else None, upper.group(1) if upper else None)
+    """The ``>=X`` and ``<Y`` versions of a PEP 508 or conda spec, else None.
+
+    Any other operator (``<=``, ``==``, ``~=``, ``!=``, ``>``) raises, as does a bare
+    version, so a constraint this helper cannot compare never passes silently.
+    """
+    spec = re.sub(r"^[A-Za-z_][\w.-]*(\[[^\]]*\])?", "", spec.split(";")[0].strip())
+    lower = upper = None
+    for clause in (c.strip() for c in spec.split(",")):
+        if clause in ("", "*"):
+            continue
+        match = re.fullmatch(r"(>=|<)\s*([^\s,<>=!~]+)", clause)
+        if match is None:
+            raise ValueError(
+                f"unsupported version specifier {clause!r} in {spec!r}: "
+                "bounds() understands only '>=' and '<'"
+            )
+        if match.group(1) == ">=":
+            lower = match.group(2)
+        else:
+            upper = match.group(2)
+    return (lower, upper)
 
 
 def test_bounds_helper():
@@ -225,22 +205,49 @@ def test_bounds_helper():
     assert bounds("dataretrieval>=1.3,<1.4") == ("1.3", "1.4")
 
 
-@pytest.mark.parametrize(("feature", "extra"), sorted(FEATURE_TO_EXTRA.items()))
-def test_bounds_match(pyproject, feature, extra):
-    """The PyPI and conda halves carry the same floor and ceiling per package."""
+@pytest.mark.parametrize(
+    ("spec", "clause"),
+    [("<=1.4", "<=1.4"), ("==1.3.*", "==1.3.*"), ("~=1.3", "~=1.3")],
+)
+def test_bounds_rejects_other_operators(spec, clause):
+    """An operator ``bounds`` cannot compare raises, naming the specifier."""
+    with pytest.raises(ValueError) as excinfo:
+        bounds(spec)
+    assert str(excinfo.value) == (
+        f"unsupported version specifier {clause!r} in {spec!r}: "
+        "bounds() understands only '>=' and '<'"
+    )
+
+
+def specifier_dicts(
+    pyproject: dict, feature: str, extra: str | None
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Normalized name -> version specifier, for the PyPI half and the conda half."""
     if extra is None:
         requirements = pyproject["project"]["dependencies"]
     else:
         requirements = pyproject["project"]["optional-dependencies"][extra]
-    pypi_raw = {
+    pypi = {
         normalize(requirement_name(r)): requirement_specifier(r) for r in requirements
     }
-    conda_raw = {
+    conda = {
         normalize(name): conda_specifier(spec)
         for name, spec in pyproject["tool"]["pixi"]["feature"][feature][
             "dependencies"
         ].items()
     }
+    return pypi, conda
+
+
+@pytest.mark.parametrize(("feature", "extra"), sorted(FEATURE_TO_EXTRA.items()))
+def test_bounds_match(pyproject, feature, extra):
+    """The PyPI and conda halves carry the same floor and ceiling per package.
+
+    ``bounds`` raises on any operator it cannot compare, and a package constrained
+    on one side only has bounds ``(None, None)`` on the other, so this also covers
+    "constrained on both sides or neither".
+    """
+    pypi_raw, conda_raw = specifier_dicts(pyproject, feature, extra)
     mismatched = {
         name: (pypi_raw[name], conda_raw[name])
         for name in pypi_raw.keys() & conda_raw.keys()
