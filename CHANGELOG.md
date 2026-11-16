@@ -28,6 +28,9 @@ None so far.
   build never embeds a stale version.
 - A test that keeps the PyPI dependency list and the conda dependency list in step, including
   version floors and ceilings.
+- `pyarrow` as a runtime dependency, chosen by measurement: it adds 23.9 MB to the zipped Windows
+  exe bundle and 0.04 s to startup. With pandas 3, string columns are now held in pyarrow arrays
+  in memory.
 - A `jupyter` extra and a matching pixi feature (JupyterLab, jupytext, matplotlib, ipykernel),
   carried by the `default` environment.
 - Licence and project metadata in `pyproject.toml`: the MIT licence file, authors, maintainers,

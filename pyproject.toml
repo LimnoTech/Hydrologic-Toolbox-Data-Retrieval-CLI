@@ -48,6 +48,12 @@ dependencies = [
   "dataretrieval>=1.3,<1.4",  # <1.4 is temporary: group 3 of the 1.4 round raises it to >=1.4
   "geopandas",
   "pandas",
+  # pyarrow: included by measurement, 2026-11-16. On the Windows runner it adds
+  # 23.9 MB to the zipped exe bundle (296.5 -> 320.4) and 0.04 s to `--help`
+  # (best of 5: 0.47 -> 0.51), under the 30 MB / 0.5 s limits set for
+  # including it. With pandas 3 it also changes how string columns are stored
+  # in memory, so the Toolbox outputs must be regenerated and diffed with it.
+  "pyarrow",
   "pyproj",
   "pyshp",
 ]
@@ -101,6 +107,7 @@ python = "3.12.*"
 dataretrieval = ">=1.3,<1.4"
 geopandas = "*"
 pandas = "*"
+pyarrow = "*"  # included by measurement; see [project.dependencies]
 pyproj = "*"
 pyshp = "*"
 
