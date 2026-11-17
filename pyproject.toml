@@ -96,6 +96,9 @@ packages = ["src/hydrologic_toolbox_data_retrieval_cli"]
 [tool.pixi.workspace]
 channels = ["conda-forge", "nodefaults"]
 platforms = ["linux-64", "osx-arm64", "win-64"]
+# The pixi that last wrote pixi.lock; CI pins the same version (ci.yaml). An older
+# pixi can reject a newer lock as out of date, so this makes it fail clearly instead.
+requires-pixi = ">=0.84.2"
 
 # Self-install, in the implicit default feature so every environment gets it.
 [tool.pixi.pypi-dependencies]

@@ -42,7 +42,7 @@ want and unpack it anywhere.
 
 ## Build From Source
 
-To compile the executable yourself, on Windows, install [pixi](https://pixi.sh) and run these
+To compile the executable yourself, on Windows, install [pixi](https://pixi.sh) (0.84.2 or newer) and run these
 from the repo root. They work the same in PowerShell, cmd, zsh and bash:
 
 ```
@@ -223,7 +223,7 @@ For shapefile attribute tables, the CLI maps raw Water Data field names to NWIS-
 
 ## Development
 
-Install [pixi](https://pixi.sh), then from the repo root:
+Install [pixi](https://pixi.sh) 0.84.2 or newer (`pixi self-update` upgrades an older one), then from the repo root:
 
 ```
 pixi install

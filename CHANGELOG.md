@@ -15,7 +15,7 @@ None so far.
 
 - A top-level `--version` flag. The version now comes from git tags through hatch-vcs.
 - pixi environments `default`, `ci` and `build`, with a committed `pixi.lock`, for linux-64,
-  osx-arm64 and win-64.
+  osx-arm64 and win-64. pixi 0.84.2 or newer is required, and CI pins that version.
 - pixi tasks `test`, `test-live`, `lint`, `format`, `typecheck`, `cli` and `build-exe`.
 - A GitHub Actions workflow. On a push, Ubuntu runs the offline tests, lint, the format check
   and the type check. On pull requests into `main` and on manual runs, Ubuntu, macOS and Windows
