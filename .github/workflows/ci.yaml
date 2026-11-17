@@ -98,11 +98,12 @@ jobs:
           cache: true
 
       - name: Rebuild the source package
-        # On a cache hit, pixi 0.84.2 restores the environment without
-        # building the source package, so the git-ignored _version.py its
-        # hatch-vcs build hook writes is missing from a fresh checkout
-        # (LimnoTech's packaging guide; test_ci_rebuilds_the_source_package).
-        run: pixi reinstall -e ci hydrologic-toolbox-data-retrieval-cli
+        # On a cache hit, pixi (0.84.2 at the time of writing) restores the
+        # environment without building the source package, so the
+        # git-ignored _version.py its hatch-vcs build hook writes is missing
+        # from a fresh checkout (LimnoTech's packaging guide;
+        # test_ci_rebuilds_the_source_package).
+        run: pixi reinstall --locked -e ci hydrologic-toolbox-data-retrieval-cli
 
       # Steps are kept separate so a failure names the tool that failed.
       - name: Tests
@@ -148,11 +149,12 @@ jobs:
           cache: true
 
       - name: Rebuild the source package
-        # On a cache hit, pixi 0.84.2 restores the environment without
-        # building the source package, so the git-ignored _version.py its
-        # hatch-vcs build hook writes is missing from a fresh checkout
-        # (LimnoTech's packaging guide; test_ci_rebuilds_the_source_package).
-        run: pixi reinstall -e default hydrologic-toolbox-data-retrieval-cli
+        # On a cache hit, pixi (0.84.2 at the time of writing) restores the
+        # environment without building the source package, so the
+        # git-ignored _version.py its hatch-vcs build hook writes is missing
+        # from a fresh checkout (LimnoTech's packaging guide;
+        # test_ci_rebuilds_the_source_package).
+        run: pixi reinstall --locked -e default hydrologic-toolbox-data-retrieval-cli
 
       - name: Type check
         run: pixi run typecheck

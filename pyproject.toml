@@ -58,6 +58,7 @@ classifiers = [
 # to `--help`. Measured on macOS with pandas 3.1.1, it gave nothing the Toolbox would notice:
 # the CLI's dataretrieval calls all take the OGC JSON path, where building the tables was
 # 7-10% slower with it; `to_csv` was unchanged; memory fell 60-65%, on tables of a few MB.
+# pandas 3 does not switch `read_csv` to the pyarrow engine; only string storage changes.
 dependencies = [
   "dataretrieval>=1.3,<1.4",  # <1.4 is temporary: group 3 of the 1.4 round raises it to >=1.4
   "geopandas",
@@ -108,8 +109,8 @@ preview = ["pixi-build"]
 hydrologic-toolbox-data-retrieval-cli = { path = "." }
 
 # conda-forge resolves Intel MKL as the BLAS on win-64 otherwise, and its DLLs land in the exe
-# (spec amendment, item 11: the zipped bundle is held at 250 MB). One solve group, so every
-# environment shares it.
+# (spec amendment, item 11: the zipped bundle is held at 250 MB). A root target table belongs to
+# the implicit default feature, which every environment composes, so the pin reaches them all.
 [tool.pixi.target.win-64.dependencies]
 libblas = { version = "*", build = "*openblas" }
 

@@ -338,6 +338,35 @@ def test_pyarrow_is_not_locked(lock):
     assert found == [], "pyarrow is locked"
 
 
+# What the win-64 exe bundle must not carry (spec amendment, items 3 and
+# 11): the full geopandas stack and Intel MKL.
+WIN_BUILD_EXCLUDED = {
+    "mkl",
+    "scipy",
+    "scikit-learn",
+    "mapclassify",
+    "pyogrio",
+    "libgdal",
+    "libgdal-core",
+}
+
+
+def test_the_win_64_build_is_lean(pyproject, lock):
+    """The exe is built from the `build` environment on win-64: it locks
+    OpenBLAS as the BLAS and none of the packages the mapping to
+    geopandas-base and the OpenBLAS pin exist to keep out."""
+    entries = lock["environments"]["build"]["packages"]["win-64"]
+    names = {locked_names(e) for e in entries}
+    assert names & WIN_BUILD_EXCLUDED == set()
+    (libblas,) = [e for e in entries if locked_names(e) == "libblas"]
+    filename = libblas["conda"].rsplit("/", 1)[-1]
+    assert "openblas" in re.sub(r"\.(conda|tar\.bz2)$", "", filename).rsplit("-", 1)[1]
+    record = self_records(pyproject, lock)["win-64"]
+    depends = {normalize(entry.split()[0]) for entry in record["depends"]}
+    assert "geopandas-base" in depends
+    assert "geopandas" not in depends
+
+
 def test_sqlite_is_at_least_3_38_wherever_libgdal_is(lock):
     """proj and libspatialite leave sqlite unbounded, and GDAL needs
     3.38. geopandas maps to geopandas-base, which locks no GDAL today;
@@ -387,10 +416,10 @@ def reinstall_args(pyproject: dict, env: str, run: list[str]) -> list[str] | Non
 
 def test_ci_rebuilds_the_source_package(pyproject, lock, workflow):
     """The step after every setup-pixi step reinstalls the source
-    packages of its environment: on a cache hit, pixi 0.84.2 restores the
-    environment without building them, so a fresh checkout lacks the
-    git-ignored _version.py their hatch-vcs build hook writes (the
-    packaging guide's gotcha)."""
+    packages of its environment: on a cache hit, pixi (0.84.2 at the
+    time of writing) restores the environment without building them, so
+    a fresh checkout lacks the git-ignored _version.py their hatch-vcs
+    build hook writes (the packaging guide's gotcha)."""
     checked = 0
     for job in workflow["jobs"].values():
         steps = job.get("steps", [])
