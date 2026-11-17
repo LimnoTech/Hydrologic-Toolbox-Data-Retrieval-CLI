@@ -40,7 +40,10 @@ None so far.
   take the OGC JSON path, where building the tables was 7-10% slower with it; `to_csv` was
   unchanged; memory fell 60-65%, on tables of a few MB; and pandas 3 does not switch `read_csv`
   to the pyarrow engine.
-- On win-64, OpenBLAS as the BLAS, so Intel MKL's DLLs stay out of the exe.
+- On win-64, OpenBLAS as the BLAS, so Intel MKL's DLLs stay out of the exe. With that and
+  the leaner geopandas, the zipped Windows exe bundle is 59.4 MB, against 243 MB for v0.1.0.
+- A 250 MB limit on the zipped Windows exe bundle: `scripts/measure_bundle.py --max-mb` fails
+  the CI build above it, after writing the size row to the job summary.
 - A pixi `jupyter` feature (JupyterLab, jupytext, matplotlib, ipykernel), carried by the
   `default` environment.
 - Licence and project metadata in `pyproject.toml`: the MIT licence file, authors, maintainers,
