@@ -59,6 +59,10 @@ None so far.
 - The code base is formatted with ruff and passes the ruff lint baseline.
 - `dataretrieval` is constrained to `>=1.3,<1.4`.
 - The README's build instructions use pixi.
+- PROJ's network access is off in every pixi environment (`PROJ_NETWORK=OFF`), overriding the
+  conda-forge proj activation script that turns it on. `pixi run` now transforms coordinates
+  without fetching datum grids, as the frozen exe does, so its outputs match the exe's and the
+  tests stay offline and deterministic.
 
 ### Removed
 

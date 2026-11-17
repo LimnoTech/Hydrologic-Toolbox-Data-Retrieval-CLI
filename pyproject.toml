@@ -169,6 +169,12 @@ default = { features = ["core", "dev", "jupyter"], solve-group = "default" }
 ci = { features = ["core", "dev"], solve-group = "default" }
 build = { features = ["core", "build"], solve-group = "default" }
 
+# conda-forge proj's activation script turns PROJ_NETWORK on when proj-data is absent, so
+# PROJ fetches datum grids from cdn.proj.org. The frozen exe never fetches grids; this
+# matches it and keeps outputs and tests offline and deterministic.
+[tool.pixi.activation.env]
+PROJ_NETWORK = "OFF"
+
 [tool.pixi.tasks]
 test = "pytest"
 test-live = "pytest -m live"
