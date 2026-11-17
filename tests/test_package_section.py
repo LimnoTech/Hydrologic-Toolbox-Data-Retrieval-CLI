@@ -228,11 +228,12 @@ def test_the_package_consumes_itself(pyproject):
     assert name not in pyproject["tool"]["pixi"].get("pypi-dependencies", {})
 
 
-def latest_release() -> str:
+def latest_release(changelog: str | None = None) -> str:
     """The newest released CHANGELOG heading, or, before the first one,
     the version the ``[Unreleased]`` section names as the previous
-    release."""
-    changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    release. Reads CHANGELOG.md unless given its text."""
+    if changelog is None:
+        changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
     released = re.findall(r"^## \[(\d+(?:\.\d+)*)\]", changelog, flags=re.MULTILINE)
     if released:
         return released[0]
@@ -245,8 +246,33 @@ def test_package_version_is_the_latest_release(pyproject):
     """The record's version is the last release, bumped beside
     CHANGELOG.md in each release PR. __version__ still comes from
     hatch-vcs."""
-    assert latest_release() == "0.1.0"
     assert package(pyproject)["version"] == latest_release()
+
+
+def test_latest_release_reads_the_newest_heading():
+    """A released heading wins over the previous-release line, and the
+    first heading is the newest."""
+    changelog = (
+        "# Changelog\n\n## [Unreleased]\n\n"
+        "The previous release is v0.9.0 (tag `v0.9.0`, 2026-01-01).\n\n"
+        "## [1.2.0] - 2026-03-01\n\n## [1.1.0] - 2026-02-01\n"
+    )
+    assert latest_release(changelog) == "1.2.0"
+
+
+def test_latest_release_falls_back_to_the_previous_release_line():
+    """Before the first release heading, the ``[Unreleased]`` line names it."""
+    changelog = (
+        "# Changelog\n\n## [Unreleased]\n\n"
+        "The previous release is v0.1.0 (tag `v0.1.0`, 2026-09-23).\n"
+    )
+    assert latest_release(changelog) == "0.1.0"
+
+
+def test_latest_release_fails_when_no_release_is_named():
+    """A CHANGELOG that names no release fails with a message."""
+    with pytest.raises(AssertionError, match="CHANGELOG.md names no release"):
+        latest_release("# Changelog\n\n## [Unreleased]\n")
 
 
 def test_pixi_build_is_enabled(pyproject):

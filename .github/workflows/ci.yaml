@@ -56,6 +56,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Every setup-pixi step reads the lock with the pixi that wrote it. An older
+  # pixi can reject a newer lock under `locked: true` (0.76 rejects 0.84's
+  # per-platform virtual-package records), so move this pin, and
+  # `requires-pixi` in pyproject.toml, whenever the lock is rewritten with a
+  # newer pixi.
+  PIXI_VERSION: v0.84.2
+
 jobs:
   test:
     name: test (${{ matrix.os }})
@@ -79,11 +87,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0
         with:
-          # Read the lock with the pixi that wrote it. An older pixi can reject a
-          # newer lock under `locked: true` (0.76 rejects 0.84's per-platform
-          # virtual-package records), so move this pin, and `requires-pixi` in
-          # pyproject.toml, whenever the lock is rewritten with a newer pixi.
-          pixi-version: v0.84.2
+          pixi-version: ${{ env.PIXI_VERSION }}
           manifest-path: pyproject.toml
           # The lean environment: core + dev, no Jupyter stack.
           #
@@ -138,11 +142,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0
         with:
-          # Read the lock with the pixi that wrote it. An older pixi can reject a
-          # newer lock under `locked: true` (0.76 rejects 0.84's per-platform
-          # virtual-package records), so move this pin, and `requires-pixi` in
-          # pyproject.toml, whenever the lock is rewritten with a newer pixi.
-          pixi-version: v0.84.2
+          pixi-version: ${{ env.PIXI_VERSION }}
           manifest-path: pyproject.toml
           environments: default
           locked: true
@@ -183,11 +183,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0
         with:
-          # Read the lock with the pixi that wrote it. An older pixi can reject a
-          # newer lock under `locked: true` (0.76 rejects 0.84's per-platform
-          # virtual-package records), so move this pin, and `requires-pixi` in
-          # pyproject.toml, whenever the lock is rewritten with a newer pixi.
-          pixi-version: v0.84.2
+          pixi-version: ${{ env.PIXI_VERSION }}
           manifest-path: pyproject.toml
           environments: build
           locked: true

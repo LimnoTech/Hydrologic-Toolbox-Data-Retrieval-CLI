@@ -26,14 +26,6 @@ None so far.
   pull request runs.
 - A `build-exe` step that refreshes the generated version before PyInstaller runs, so a local
   build never embeds a stale version.
-- One dependency list. The runtime dependencies are `[project.dependencies]` alone, and the
-  repo is a pixi-build source package: pixi maps that list to conda names, and every pixi
-  environment installs the package through it. `geopandas` maps to conda's `geopandas-base`, so
-  scipy, scikit-learn, mapclassify, matplotlib, pyogrio and GDAL are no longer installed; the CLI
-  uses none of them. A test checks that every dependency reaches the locked package record. A
-  checkout made before this change needs
-  `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli` once per environment, because
-  the editable self-install became a source package.
 - No `pyarrow`, by measurement, and a test keeps it out of the lock. On the Windows runner it
   added 23.9 MB to the zipped exe bundle (296.5 to 320.4 MB) and 0.04 s to `--help`. On macOS
   with pandas 3.1.1 it gave nothing the Toolbox would notice: the CLI's dataretrieval calls all
@@ -54,6 +46,15 @@ None so far.
 ### Changed
 
 - Packaging moved to hatchling and hatch-vcs.
+- pixi installs the project as a pixi-build source package, not as an editable PyPI dependency.
+  Its runtime dependencies, still the `[project.dependencies]` list, are now mapped to
+  conda-forge packages instead of installed as PyPI wheels. `geopandas` maps to conda's
+  `geopandas-base`, so scipy, scikit-learn, mapclassify, pyogrio and GDAL are no longer
+  installed, and matplotlib is no longer in the `ci` and `build` environments (`default` keeps
+  it through the `jupyter` feature); the CLI uses none of them. A test checks that every
+  dependency reaches the locked package record. A checkout whose pixi environments predate this
+  change needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli` once per
+  environment.
 - Offline tests are the default for `pytest`; tests marked `live` are deselected unless run with
   `test-live`.
 - The code base is formatted with ruff and passes the ruff lint baseline.

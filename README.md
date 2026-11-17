@@ -229,8 +229,8 @@ Install [pixi](https://pixi.sh) 0.84.2 or newer (`pixi self-update` upgrades an 
 pixi install
 ```
 
-A checkout made before the dependencies moved to one list (the editable self-install became a
-pixi-build source package) needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli`
+A checkout whose pixi environments predate this change (v0.1.0 installed the package as an
+editable PyPI dependency) needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli`
 once per environment, or the package will not import.
 
 The `default` environment also carries the Jupyter stack (JupyterLab, jupytext, matplotlib and

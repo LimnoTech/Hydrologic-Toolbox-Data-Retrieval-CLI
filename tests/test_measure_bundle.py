@@ -1,9 +1,12 @@
-"""The pure parts of ``scripts/measure_bundle.py``."""
+"""``scripts/measure_bundle.py``: its row format, and ``main()`` run on
+temporary bundles, with a stand-in exe run as a subprocess and the bundle
+zipped beside it."""
 
 from __future__ import annotations
 
 import importlib.util
 import os
+import re
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "measure_bundle.py"
@@ -19,12 +22,13 @@ def _load_script():
 
 def test_format_row():
     """One Markdown row: zip size to 1 dp, timing to 2 dp."""
-    row = _load_script().format_row("with pyarrow", 41.26, 1.234)
-    assert row == "| with pyarrow | 41.3 | 1.23 |"
+    row = _load_script().format_row("as built", 41.26, 1.234)
+    assert row == "| as built | 41.3 | 1.23 |"
 
 
-def test_missing_exe_prints_one_line_and_exits_1(tmp_path, capsys):
-    """A missing exe gives one stderr line and exit code 1, not a traceback."""
+def test_missing_exe_prints_one_line_exits_1_and_leaves_no_zip(tmp_path, capsys):
+    """A missing exe gives one stderr line and exit code 1, not a traceback.
+    The exe is checked before zipping, so it leaves no stray zip."""
     bundle = tmp_path / "bundle"
     bundle.mkdir()
     exe = bundle / "missing.exe"
@@ -33,6 +37,7 @@ def test_missing_exe_prints_one_line_and_exits_1(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.err == f"measure_bundle: {exe} not found\n"
     assert captured.out == ""
+    assert not (tmp_path / "bundle.zip").exists()
 
 
 def _failing_exe(directory: Path, code: int) -> Path:
@@ -57,14 +62,6 @@ def test_help_failure_prints_one_line_exits_1_and_leaves_no_zip(tmp_path, capsys
     captured = capsys.readouterr()
     assert captured.err == f"measure_bundle: {exe} --help exited 3\n"
     assert captured.out == ""
-    assert not (tmp_path / "bundle.zip").exists()
-
-
-def test_missing_exe_leaves_no_zip(tmp_path):
-    """The exe is checked before zipping, so a missing exe leaves no stray zip."""
-    bundle = tmp_path / "bundle"
-    bundle.mkdir()
-    assert _load_script().main([str(bundle), str(bundle / "missing.exe")]) == 1
     assert not (tmp_path / "bundle.zip").exists()
 
 
@@ -95,7 +92,7 @@ def test_under_the_limit_prints_row_and_exits_0(tmp_path, capsys):
     )
     assert code == 0
     captured = capsys.readouterr()
-    assert captured.out.startswith("| lean | 0.2 | ")
+    assert re.fullmatch(r"\| lean \| 0\.2 \| \d+\.\d{2} \|\n", captured.out)
     assert captured.err == ""
 
 
@@ -107,7 +104,7 @@ def test_over_the_limit_prints_row_then_one_line_and_exits_1(tmp_path, capsys):
     )
     assert code == 1
     captured = capsys.readouterr()
-    assert captured.out.startswith("| fat | 0.2 | ")
+    assert re.fullmatch(r"\| fat \| 0\.2 \| \d+\.\d{2} \|\n", captured.out)
     assert captured.err == "bundle zip is 0.20 MB, over the 0.1 MB limit\n"
 
 

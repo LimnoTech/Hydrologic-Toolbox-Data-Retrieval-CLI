@@ -1,5 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
 
 
 a = Analysis(
@@ -21,9 +20,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # HTDR_PYINSTALLER_EXCLUDES: optional comma-separated modules to exclude, kept for
-    # bundle-size experiments. Nothing sets it today.
-    excludes=[m for m in os.environ.get('HTDR_PYINSTALLER_EXCLUDES', '').split(',') if m],
+    excludes=[],
     noarchive=False,
     optimize=0,
 )

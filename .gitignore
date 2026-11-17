@@ -7,14 +7,9 @@ build/*
 .pixi/*
 !.pixi/config.toml
 .DS_Store
-.DS_Store
 dist/.DS_Store
 
-
-.DS_Store
-
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[codz]
 *$py.class
 
@@ -68,7 +63,6 @@ coverage.xml
 *.py.cover
 *.lcov
 .hypothesis/
-.pytest_cache/
 cover/
 
 # Translations
@@ -142,8 +136,6 @@ ipython_config.py
 # pixi.lock
 #   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
 #   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi/*
-!.pixi/config.toml
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
