@@ -26,13 +26,23 @@ None so far.
   pull request runs.
 - A `build-exe` step that refreshes the generated version before PyInstaller runs, so a local
   build never embeds a stale version.
-- A test that keeps the PyPI dependency list and the conda dependency list in step, including
-  version floors and ceilings.
-- `pyarrow` as a runtime dependency, chosen by measurement: it adds 23.9 MB to the zipped Windows
-  exe bundle and 0.04 s to startup. With pandas 3, string columns are now held in pyarrow arrays
-  in memory.
-- A `jupyter` extra and a matching pixi feature (JupyterLab, jupytext, matplotlib, ipykernel),
-  carried by the `default` environment.
+- One dependency list. The runtime dependencies are `[project.dependencies]` alone, and the
+  repo is a pixi-build source package: pixi maps that list to conda names, and every pixi
+  environment installs the package through it. `geopandas` maps to conda's `geopandas-base`, so
+  scipy, scikit-learn, mapclassify, matplotlib, pyogrio and GDAL are no longer installed; the CLI
+  uses none of them. A test checks that every dependency reaches the locked package record. A
+  checkout made before this change needs
+  `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli` once per environment, because
+  the editable self-install became a source package.
+- No `pyarrow`, by measurement, and a test keeps it out of the lock. On the Windows runner it
+  added 23.9 MB to the zipped exe bundle (296.5 to 320.4 MB) and 0.04 s to `--help`. On macOS
+  with pandas 3.1.1 it gave nothing the Toolbox would notice: the CLI's dataretrieval calls all
+  take the OGC JSON path, where building the tables was 7-10% slower with it; `to_csv` was
+  unchanged; memory fell 60-65%, on tables of a few MB; and pandas 3 does not switch `read_csv`
+  to the pyarrow engine.
+- On win-64, OpenBLAS as the BLAS, so Intel MKL's DLLs stay out of the exe.
+- A pixi `jupyter` feature (JupyterLab, jupytext, matplotlib, ipykernel), carried by the
+  `default` environment.
 - Licence and project metadata in `pyproject.toml`: the MIT licence file, authors, maintainers,
   keywords, classifiers and project URLs.
 - A `Development` section, a "Run without the exe" section and a `Credits` section in the
