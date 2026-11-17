@@ -1,12 +1,11 @@
 """Zip a PyInstaller bundle and time its ``--help``; print one Markdown row.
 
-Usage: ``measure_bundle.py <bundle_dir> <exe_path> [--label TEXT]
-[--max-mb MB]``. The zip is
-written next to ``<bundle_dir>`` as ``<bundle_dir name>.zip``, and only after the
-exe's ``--help`` has run. Exits 1 with one line on stderr if the bundle directory or
-exe is missing, ``--help`` fails, or a file operation fails. Sizes are decimal MB
-(10^6 bytes). With ``--max-mb``, a zip over that size still prints its row,
-then one stderr line, and exits 1.
+Usage: ``measure_bundle.py <bundle_dir> <exe_path> [--label TEXT] [--max-mb MB]``.
+The zip is written next to ``<bundle_dir>`` as ``<bundle_dir name>.zip``, and only
+after the exe's ``--help`` has run. Exits 1 with one line on stderr if the bundle
+directory or exe is missing, ``--help`` fails, or a file operation fails. Sizes are
+decimal MB (10^6 bytes). With ``--max-mb``, a zip over that size still prints its
+row, then one stderr line, and exits 1.
 """
 
 from __future__ import annotations
@@ -76,10 +75,11 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as error:
         print(f"measure_bundle: {error}", file=sys.stderr)
         return 1
-    print(format_row(args.label, zip_mb, seconds))
+    # Flush so the row reaches the terminal before the stderr line below.
+    print(format_row(args.label, zip_mb, seconds), flush=True)
     if args.max_mb is not None and zip_mb > args.max_mb:
         print(
-            f"bundle zip is {zip_mb:.1f} MB, over the {args.max_mb:g} MB limit",
+            f"bundle zip is {zip_mb:.2f} MB, over the {args.max_mb:g} MB limit",
             file=sys.stderr,
         )
         return 1

@@ -108,4 +108,16 @@ def test_over_the_limit_prints_row_then_one_line_and_exits_1(tmp_path, capsys):
     assert code == 1
     captured = capsys.readouterr()
     assert captured.out.startswith("| fat | 0.2 | ")
-    assert captured.err == "bundle zip is 0.2 MB, over the 0.1 MB limit\n"
+    assert captured.err == "bundle zip is 0.20 MB, over the 0.1 MB limit\n"
+
+
+def test_exactly_at_the_limit_passes(tmp_path, capsys):
+    """The check is strict ``>``: a zip exactly at ``--max-mb`` exits 0, no stderr."""
+    bundle, exe = _bundle_with_payload(tmp_path, 200_000)
+    script = _load_script()
+    assert script.main([str(bundle), str(exe)]) == 0
+    capsys.readouterr()
+    limit = (tmp_path / "bundle.zip").stat().st_size / 1_000_000
+    code = script.main([str(bundle), str(exe), "--max-mb", repr(limit)])
+    assert code == 0
+    assert capsys.readouterr().err == ""
