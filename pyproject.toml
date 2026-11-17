@@ -42,28 +42,28 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Hydrology",
 ]
 
-# The PyPI-name half of the dual declaration; tests/test_dependency_parity.py keeps it in
-# step with [tool.pixi.feature.core.dependencies].
+# The one runtime list, in PyPI names: what src/ imports. pixi-build maps it to conda names for
+# the package's record (`ignore-pypi-mapping = false` below), and every pixi environment installs
+# the package through that record. tests/test_package_section.py reads the record from pixi.lock
+# and fails on a requirement that did not reach it. Tool and notebook packages are in the pixi
+# features, not here.
+#
+# geopandas maps to conda's geopandas-base, without mapclassify, scikit-learn, scipy,
+# matplotlib, pyogrio or GDAL. The CLI uses none of them: shapefiles are written with pyshp,
+# and pyproj is declared directly.
+#
+# No pyarrow: this repo is exempt from LimnoTech's rule that pandas implies pyarrow (spec
+# amendment, item 4, 2026-11-16), and test_pyarrow_is_not_locked holds the exemption. On the
+# Windows runner pyarrow added 23.9 MB to the zipped exe bundle (296.5 -> 320.4 MB) and 0.04 s
+# to `--help`. Measured on macOS with pandas 3.1.1, it gave nothing the Toolbox would notice:
+# the CLI's dataretrieval calls all take the OGC JSON path, where building the tables was
+# 7-10% slower with it; `to_csv` was unchanged; memory fell 60-65%, on tables of a few MB.
 dependencies = [
   "dataretrieval>=1.3,<1.4",  # <1.4 is temporary: group 3 of the 1.4 round raises it to >=1.4
   "geopandas",
   "pandas",
-  # pyarrow: included by measurement, 2026-11-16. On the Windows runner it adds
-  # 23.9 MB to the zipped exe bundle (296.5 -> 320.4) and 0.04 s to `--help`
-  # (best of 5: 0.47 -> 0.51), under the 30 MB / 0.5 s limits set for
-  # including it. With pandas 3 it also changes how string columns are stored
-  # in memory, so the Toolbox outputs must be regenerated and diffed with it.
-  "pyarrow",
   "pyproj",
   "pyshp",
-]
-
-[project.optional-dependencies]
-jupyter = [
-  "jupyterlab",
-  "jupytext",
-  "matplotlib",
-  "ipykernel",
 ]
 
 [project.urls]
@@ -99,23 +99,49 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 # The pixi that last wrote pixi.lock; CI pins the same version (ci.yaml). An older
 # pixi can reject a newer lock as out of date, so this makes it fail clearly instead.
 requires-pixi = ">=0.84.2"
+# pixi-build, a preview, builds the package from this manifest (the package section below).
+preview = ["pixi-build"]
 
-# Self-install, in the implicit default feature so every environment gets it.
-[tool.pixi.pypi-dependencies]
-hydrologic-toolbox-data-retrieval-cli = { path = ".", editable = true }
+# Self-install as a pixi-build source package, in the implicit default feature so every
+# environment gets it: the repo installs itself through the same record a consumer would get.
+[tool.pixi.dependencies]
+hydrologic-toolbox-data-retrieval-cli = { path = "." }
 
-# The conda-name half of the dual declaration.
+# conda-forge resolves Intel MKL as the BLAS on win-64 otherwise, and its DLLs land in the exe
+# (spec amendment, item 11: the zipped bundle is held at 250 MB). One solve group, so every
+# environment shares it.
+[tool.pixi.target.win-64.dependencies]
+libblas = { version = "*", build = "*openblas" }
+
+# hydrologic-toolbox-data-retrieval-cli as a pixi-build source package, following LimnoTech's
+# packaging guide (python-scientific variant; private) and water-data-engine's pyproject.toml.
+# The record pixi-build writes comes from [project.dependencies] and requires-python;
+# tests/test_package_section.py reads it from pixi.lock.
+[tool.pixi.package]
+name = "hydrologic-toolbox-data-retrieval-cli"
+# The last release, bumped beside CHANGELOG.md in each release PR. It is the conda record's
+# version only; __version__ still comes from hatch-vcs.
+version = "0.1.0"
+
+[tool.pixi.package.build]
+backend = { name = "pixi-build-python", version = "*" }
+
+[tool.pixi.package.build.config]
+# Map [project.dependencies] to conda names for the record.
+ignore-pypi-mapping = false
+
+[tool.pixi.package.host-dependencies]
+hatchling = "*"
+hatch-vcs = "*"
+python = "3.12.*"
+
+# Only the environment's python: the runtime list is [project.dependencies].
 [tool.pixi.feature.core.dependencies]
 python = "3.12.*"
-dataretrieval = ">=1.3,<1.4"
-geopandas = "*"
-pandas = "*"
-pyarrow = "*"  # included by measurement; see [project.dependencies]
-pyproj = "*"
-pyshp = "*"
 
 [tool.pixi.feature.dev.dependencies]
 pytest = "*"
+pyyaml = "*"  # tests/test_package_section.py reads pixi.lock and ci.yaml
 ruff = "*"
 pyrefly = "*"
 
@@ -131,7 +157,7 @@ ipykernel = "*"
 pyinstaller = "*"
 
 [tool.pixi.feature.build.tasks]
-# pixi rewrites the editable install, and with it the generated _version.py, only when the
+# pixi rebuilds the source package, and with it the generated _version.py, only when the
 # manifest changes, not when HEAD moves. Reinstalling just the project package makes
 # hatch-vcs re-read git, so the exe never embeds a stale version.
 refresh-version = "pixi reinstall --locked -e build hydrologic-toolbox-data-retrieval-cli"
