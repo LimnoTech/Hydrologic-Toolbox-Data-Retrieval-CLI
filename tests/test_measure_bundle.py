@@ -76,3 +76,36 @@ def test_missing_bundle_dir_prints_one_line_and_exits_1(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.err == f"measure_bundle: bundle directory {bundle} not found\n"
     assert captured.out == ""
+
+
+def _bundle_with_payload(tmp_path: Path, payload_bytes: int) -> tuple[Path, Path]:
+    """Return a bundle dir and a working exe, plus an incompressible payload."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    exe = _failing_exe(bundle, 0)
+    (bundle / "payload.bin").write_bytes(os.urandom(payload_bytes))
+    return bundle, exe
+
+
+def test_under_the_limit_prints_row_and_exits_0(tmp_path, capsys):
+    """A zip under ``--max-mb`` prints its row, nothing on stderr, and exits 0."""
+    bundle, exe = _bundle_with_payload(tmp_path, 200_000)
+    code = _load_script().main(
+        [str(bundle), str(exe), "--label", "lean", "--max-mb", "250"]
+    )
+    assert code == 0
+    captured = capsys.readouterr()
+    assert captured.out.startswith("| lean | 0.2 | ")
+    assert captured.err == ""
+
+
+def test_over_the_limit_prints_row_then_one_line_and_exits_1(tmp_path, capsys):
+    """A zip over ``--max-mb`` still prints its row, then one stderr line, exit 1."""
+    bundle, exe = _bundle_with_payload(tmp_path, 200_000)
+    code = _load_script().main(
+        [str(bundle), str(exe), "--label", "fat", "--max-mb", "0.1"]
+    )
+    assert code == 1
+    captured = capsys.readouterr()
+    assert captured.out.startswith("| fat | 0.2 | ")
+    assert captured.err == "bundle zip is 0.2 MB, over the 0.1 MB limit\n"

@@ -233,9 +233,13 @@ jobs:
           $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
           "| Build | Zip (MB, 10^6 bytes) | --help, best of 5 (s) |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           "| --- | --- | --- |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
-          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "as built"
-          if ($LASTEXITCODE -ne 0) { throw "measure_bundle.py exited $LASTEXITCODE" }
-          $row | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          # Hold the zip at 250 MB (v0.1.0 was 243 MB; spec amendment item 11). Write
+          # the row before failing, so an over-limit build still shows its size.
+          # Unredirected stderr (the over-limit line) reaches the log, not $row.
+          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "as built" --max-mb 250
+          $code = $LASTEXITCODE
+          if ($row) { $row | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append }
+          if ($code -ne 0) { throw "measure_bundle.py exited $code" }
 
       # upload-artifact zips what it is given, so upload the folder, not the zip:
       # the download is then one zip, not a zip inside a zip. The measured zip
