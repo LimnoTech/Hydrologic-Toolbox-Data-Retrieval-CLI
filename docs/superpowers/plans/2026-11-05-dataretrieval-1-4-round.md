@@ -575,8 +575,8 @@ alias: the June rename also made a clean break.
 
 - [ ] **Step 1:** Amend this plan and the spec (this section).
 - [ ] **Step 2:** `git mv` the package and spec file; replace the old name outside
-  `docs/superpowers/`; `pixi lock` changes only the source package's name/path (ruling C29: plus a uv
-  build-host patch bump and a purls mapping refresh); run
+  `docs/superpowers/`; `pixi lock` changes only the source package's name/path (ruling C29:
+  plus a uv build-host patch bump and a purls mapping refresh); run
   `pixi reinstall` for `default`, `ci` and `build` with the new name.
 - [ ] **Step 3:** README and CHANGELOG: the exe, bundle folder and zip rename under
   "Breaking (Toolbox contract)"; the renamed distribution, import name, console script and repo;

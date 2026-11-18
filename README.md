@@ -229,9 +229,10 @@ Install [pixi](https://pixi.sh) 0.84.2 or newer (`pixi self-update` upgrades an 
 pixi install
 ```
 
-An environment created before the rename (or before v0.1.0's editable PyPI install became a
-pixi-build source package) needs `pixi reinstall -e <env> hydrotoolbox-dataretrieval` once per
-environment. Until then it still holds the old package, so `hydrotoolbox_dataretrieval` will not import.
+An environment created before the rename to `hydrotoolbox-dataretrieval`, or before the package
+became a pixi-build source package (v0.1.0 installed it as an editable PyPI dependency), needs
+`pixi reinstall -e <env> hydrotoolbox-dataretrieval` once per environment. Until then it holds the
+old package, and `hydrotoolbox_dataretrieval` will not import.
 
 The `default` environment also carries the Jupyter stack (JupyterLab, jupytext, matplotlib and
 ipykernel). The leaner `ci` environment (core plus test and lint tools) is what CI uses for tests.
