@@ -9,7 +9,10 @@ The previous release is v0.1.0 (tag `v0.1.0`, 2026-09-23).
 
 ### Breaking (Toolbox contract)
 
-None so far.
+- The exe is now `hydrotoolbox_dataretrieval.exe`, and the bundle folder and zip are renamed to
+  match (`hydrotoolbox_dataretrieval/` and `hydrotoolbox_dataretrieval.zip`). It was
+  `hydrologic_toolbox_data_retrieval_cli.exe`. Paul Duda approved the rename on 2026-11-16.
+  The CLI-only default output folder is now `outputs/hydrotoolbox_dataretrieval`.
 
 ### Added
 
@@ -45,6 +48,13 @@ None so far.
 
 ### Changed
 
+- The project is renamed `hydrotoolbox-dataretrieval`, the data-retrieval CLI for the USGS
+  Hydrologic Toolbox. The distribution and console script are `hydrotoolbox-dataretrieval`
+  (was `hydrologic-toolbox-data-retrieval-cli`), the import package is
+  `hydrotoolbox_dataretrieval` (was `hydrologic_toolbox_data_retrieval_cli`), and the GitHub
+  repo is `LimnoTech/hydrotoolbox-dataretrieval`. There is no alias for the old names. An
+  existing checkout needs `pixi reinstall -e <env> hydrotoolbox-dataretrieval` once per
+  environment.
 - Packaging moved to hatchling and hatch-vcs.
 - pixi installs the project as a pixi-build source package, not as an editable PyPI dependency.
   Its runtime dependencies, still the `[project.dependencies]` list, are now mapped to
@@ -53,7 +63,7 @@ None so far.
   installed, and matplotlib is no longer in the `ci` and `build` environments (`default` keeps
   it through the `jupyter` feature); the CLI uses none of them. A test checks that every
   dependency reaches the locked package record. A checkout whose pixi environments predate this
-  change needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli` once per
+  change needs `pixi reinstall -e <env> hydrotoolbox-dataretrieval` once per
   environment.
 - Offline tests are the default for `pytest`; tests marked `live` are deselected unless run with
   `test-live`.

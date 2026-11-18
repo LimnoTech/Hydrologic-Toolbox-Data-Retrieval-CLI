@@ -1,8 +1,8 @@
-# Hydrologic-Toolbox-DataRetrieval-CLI
+# hydrotoolbox-dataretrieval
 
-This repository packages `Hydrologic-Toolbox-DataRetrieval-CLI`, a CLI-only
-executable for Windows that retrieves USGS Water Data for the Hydrologic
-Toolbox.
+This repository packages `hydrotoolbox-dataretrieval`, the data-retrieval CLI for
+the USGS Hydrologic Toolbox: a CLI-only executable for Windows that retrieves
+USGS Water Data for the Toolbox.
 
 ## About The Hydrologic Toolbox
 
@@ -16,7 +16,7 @@ groundwater recharge from streamflow records.
 
 Those analyses run on streamflow and groundwater-level data from the USGS
 National Water Information System. This repository supplies that retrieval
-step: the Toolbox calls `Hydrologic-Toolbox-DataRetrieval-CLI` with an XML
+step: the Toolbox calls `hydrotoolbox-dataretrieval` with an XML
 request, the CLI queries the USGS Water Data APIs, and station shapefiles or
 time-series CSVs are written to a target folder. See
 [HydrologicToolbox XML](#hydrologictoolbox-xml) for the request format.
@@ -28,7 +28,7 @@ others, 2022).
 
 | Resource | Link |
 | --- | --- |
-| Download the compiled CLI | <https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases> |
+| Download the compiled CLI | <https://github.com/LimnoTech/hydrotoolbox-dataretrieval/releases> |
 | Hydrologic Toolbox (USGS Techniques and Methods 4-D3) | <https://doi.org/10.3133/tm4D3> |
 | USGS Water Data APIs overview | <https://www.usgs.gov/tools/usgs-water-data-apis> |
 | USGS Water Data API hub | <https://api.waterdata.usgs.gov/> |
@@ -36,7 +36,7 @@ others, 2022).
 ## Get The Executable
 
 The compiled Windows executable is published as a
-[Release asset](https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/releases),
+[Release asset](https://github.com/LimnoTech/hydrotoolbox-dataretrieval/releases),
 not committed to this repository. Download the archive for the version you
 want and unpack it anywhere.
 
@@ -51,7 +51,7 @@ pixi run -e build build-exe
 ```
 
 The build is written to
-`dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
+`dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe`.
 
 CI builds the same artifact on Windows for pull requests into `main`, for manual
 (`workflow_dispatch`) runs, and for `v*` tags.
@@ -61,14 +61,14 @@ CI builds the same artifact on Windows for pull requests into `main`, for manual
 From the folder holding the executable:
 
 ```powershell
-cd .\dist\hydrologic_toolbox_data_retrieval_cli
-.\hydrologic_toolbox_data_retrieval_cli.exe --help
+cd .\dist\hydrotoolbox_dataretrieval
+.\hydrotoolbox_dataretrieval.exe --help
 ```
 
 or by full path:
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe --help
 ```
 
 ## Run Without The Exe
@@ -104,30 +104,30 @@ If it is easier for a calling app, set `HYDROLOGIC_TOOLBOX_DEBUG=1` or
 passing debug flags.
 
 ```cmd
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```cmd
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```cmd
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 PowerShell can be pickier about passing raw inline XML to a native `.exe`. If
 you need to run it from PowerShell, use `--%`:
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe --% xml-compat --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe --% xml-compat --debug --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 ```powershell
-.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --% xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
+.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe --% xml-compat --debug-log C:\temp\htdr_cli_debug.log --xml "<function name='GetNWISDailyDischarge'><arguments><SaveIn>C:\temp\out</SaveIn><stationid>02336106</stationid></arguments></function>"
 ```
 
 The XML request is treated as a superset envelope. Extra tags that are not
@@ -195,12 +195,12 @@ These examples assume you are running from the repo root in PowerShell.
 
 | Command | Result |
 | --- | --- |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf discharge --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_discharge` | Writes the `discharge` shapefile set to the output folder. |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf discharge --wf gw_daily --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_multi` | Writes one shapefile set for each selected workflow. |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe create-new-project --wf gw_periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data discharge --station-id 02225500 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data gw_daily --station-id 324209082430201 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
-| `.\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe add-data gw_periodic --station-id 410947071344803 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` with a commented metadata header and a periodic measurement table. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe create-new-project --wf discharge --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_discharge` | Writes the `discharge` shapefile set to the output folder. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe create-new-project --wf discharge --wf gw_daily --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_multi` | Writes one shapefile set for each selected workflow. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe create-new-project --wf gw_periodic --bbox -82.859 31.899 -82.013 32.947 --output-dir dist\outputs\create_new_project_periodic_bbox` | Limits station discovery to the supplied bounding box and writes the `periodic` shapefile set. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe add-data discharge --station-id 02225500 --output-dir dist\outputs\add_data_discharge` | Writes `discharge_02225500.csv` with the approved header and body format. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe add-data gw_daily --station-id 324209082430201 --output-dir dist\outputs\add_data_daily` | Writes `gw_daily_324209082430201.csv` with the approved header and body format. |
+| `.\dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe add-data gw_periodic --station-id 410947071344803 --start-date 1880-01-01 --end-date 2100-01-01 --output-dir dist\outputs\add_data_periodic` | Writes `gw_periodic_410947071344803.csv` with a commented metadata header and a periodic measurement table. |
 
 For `add-data`, the workflow name chooses the built-in USGS parameter automatically:
 - `discharge` -> `00060`
@@ -230,7 +230,7 @@ pixi install
 ```
 
 A checkout whose pixi environments predate this change (v0.1.0 installed the package as an
-editable PyPI dependency) needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli`
+editable PyPI dependency) needs `pixi reinstall -e <env> hydrotoolbox-dataretrieval`
 once per environment, or the package will not import.
 
 The `default` environment also carries the Jupyter stack (JupyterLab, jupytext, matplotlib and
@@ -247,7 +247,7 @@ Every task below runs with `pixi run <task>`, the same in PowerShell, cmd, zsh a
 | `format` | Runs `ruff format`. |
 | `typecheck` | Runs `pyrefly check`. |
 | `build-exe` | Builds the PyInstaller bundle for the OS it runs on, a Windows exe when run on Windows (`build` environment). It first reinstalls the project package so the bundle reports the current git version. |
-| `cli` | Runs `python -m hydrologic_toolbox_data_retrieval_cli`; pass CLI arguments after `--`. |
+| `cli` | Runs `python -m hydrotoolbox_dataretrieval`; pass CLI arguments after `--`. |
 
 CI (see [.github/workflows/ci.yaml](.github/workflows/ci.yaml)) works like this:
 
