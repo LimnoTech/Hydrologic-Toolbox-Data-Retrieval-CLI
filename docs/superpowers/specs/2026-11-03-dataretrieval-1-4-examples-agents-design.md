@@ -191,6 +191,15 @@ The probe and measurements behind them are in the ledger.
     `--help` took 0.60 s against 0.74 s. A PyInstaller build from the pixi-build environment
     passed the smoke checks, and its `--version` matched `_version.py`.
 
+### Amendment, 2026-11-17 (ruling C17): the project is renamed
+
+The distribution, console script and repo are `hydrotoolbox-dataretrieval`, the import package
+is `hydrotoolbox_dataretrieval`, and the exe, spec file and bundle folder are
+`hydrotoolbox_dataretrieval` (Paul Duda approved the exe rename on 2026-11-16). From group 1b on,
+read every old name in this spec (`hydrologic-toolbox-data-retrieval-cli`,
+`hydrologic_toolbox_data_retrieval_cli`, `Hydrologic-Toolbox-Data-Retrieval-CLI`) as its new name.
+The body text keeps the old names as history.
+
 ## Part B — dataretrieval 1.4
 
 **Probe first, then change code.** water-data-engine (private; see Constraints) moved to

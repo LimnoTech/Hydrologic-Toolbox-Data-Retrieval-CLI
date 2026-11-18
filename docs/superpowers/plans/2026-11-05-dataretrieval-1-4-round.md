@@ -23,8 +23,13 @@ reviewer approves together with the plan.
 
 ## Global Constraints
 
-- Repo: `/Users/aaufdenkampe/Documents/git_Limno/Hydrologic-Toolbox-Data-Retrieval-CLI`. Public,
+- Repo: `/Users/aaufdenkampe/Documents/git_Limno/hydrotoolbox-dataretrieval`. Public,
   MIT (`License.md`).
+- **Names (ruling C17, 2026-11-17):** from group 1b on, every old name in this plan and the spec
+  (`hydrologic-toolbox-data-retrieval-cli`, `hydrologic_toolbox_data_retrieval_cli`,
+  `Hydrologic-Toolbox-Data-Retrieval-CLI`) is read as its new name (`hydrotoolbox-dataretrieval`,
+  `hydrotoolbox_dataretrieval`, `hydrotoolbox-dataretrieval`). Completed group 1 task text keeps the
+  old names as history.
 - **Toolbox contract:** the XML request shapes and the `<success>`/`<error>` response strings of
   `xml-compat`; each workflow's CSV layout (header lines, column names, column order, value
   formatting, date formatting); the shapefile file names, field names, field types and widths, and
@@ -132,7 +137,7 @@ one in the ledger with what it costs if wrong.
 | `pyproject.toml` | 1, 3 | Build, metadata, both dependency lists, pixi workspace and tasks, tool config |
 | `pixi.lock` | 1, 3, 5 | Committed lock (generated; never hand-edited) |
 | `.gitignore` | 1 | Lock and spec no longer ignored; `_version.py`, `_app_key.py`, `.agent-workspace/`, `examples/outputs/` ignored |
-| `hydrologic_toolbox_data_retrieval_cli.spec` | 1, 3 | PyInstaller spec; adds `_version` and `_app_key` hidden imports and reads `HTDR_PYINSTALLER_EXCLUDES` |
+| `hydrotoolbox_dataretrieval.spec` | 1, 1b, 3 | PyInstaller spec; adds `_version` and `_app_key` hidden imports and reads `HTDR_PYINSTALLER_EXCLUDES` |
 | `src/.../__init__.py` | 1 | `__version__` from `_version.py`, falling back to `"0.0.0"` |
 | `src/.../cli.py` | 1, 3 | `--version`; v0 error handling; key state in debug |
 | `src/.../app.py` | 3 | Entry point opens the app-key configuration block |
@@ -156,7 +161,7 @@ one in the ledger with what it costs if wrong.
 | `docs/toolbox-test-checklist.md` (new) | 3 | Paul's test list |
 | `examples/` notebooks, `reference_data/`, `README.md` (new) | 4 | Part E |
 
-`src/...` means `src/hydrologic_toolbox_data_retrieval_cli/`.
+`src/...` means `src/hydrotoolbox_dataretrieval/`.
 
 ---
 
@@ -551,6 +556,32 @@ it.
   - the size row against 243 MB (v0.1.0) and 296.5 MB (group 1's first build).
 - [ ] **Step 2:** Record the Windows row in the ledger and the CHANGELOG bullet. Rewrite PR #18's
   description in full. Then the gate procedure.
+
+### Amendment, 2026-11-17: Group 1b, the rename
+
+Ruling C17: the project is renamed `hydrotoolbox-dataretrieval`. Paul Duda approved the exe rename
+on 2026-11-16, so there is no fallback build. The `HTDR_` prefix stays. No backward-compatibility
+alias: the June rename also made a clean break.
+
+| Thing | Old | New |
+| --- | --- | --- |
+| GitHub repo | `LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI` | `LimnoTech/hydrotoolbox-dataretrieval` |
+| Distribution, console script, argparse `prog` | `hydrologic-toolbox-data-retrieval-cli` | `hydrotoolbox-dataretrieval` |
+| Import package | `hydrologic_toolbox_data_retrieval_cli` | `hydrotoolbox_dataretrieval` |
+| Spec file, exe and bundle folder | `hydrologic_toolbox_data_retrieval_cli[.spec/.exe]` | `hydrotoolbox_dataretrieval[.spec/.exe]` |
+| CLI-only default output dir | `outputs/hydrologic_toolbox_data_retrieval_cli` | `outputs/hydrotoolbox_dataretrieval` |
+
+### Task 1b.1: Rename to hydrotoolbox-dataretrieval
+
+- [ ] **Step 1:** Amend this plan and the spec (this section).
+- [ ] **Step 2:** `git mv` the package and spec file; replace the old name outside
+  `docs/superpowers/`; `pixi lock` changes only the source package's name/path; run
+  `pixi reinstall` for `default`, `ci` and `build` with the new name.
+- [ ] **Step 3:** README and CHANGELOG: the exe, bundle folder and zip rename under
+  "Breaking (Toolbox contract)"; the renamed distribution, import name, console script and repo;
+  the `pixi reinstall` line for existing checkouts.
+- [ ] **Step 4:** Verify: old-name grep empty outside `docs/superpowers` and the CHANGELOG, locked
+  installs, tests, lint, typecheck, and a `build-exe` smoke check (`--help`, `--version`).
 
 ---
 
