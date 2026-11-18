@@ -6,8 +6,11 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from pyproj import CRS, Transformer
+
 from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
-from hydrologic_toolbox_data_retrieval_cli.station_discovery import run_create_new_project_section
+from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
+    run_create_new_project_section,
+)
 from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 
 _SUPPORTED_DISCOVERY_FUNCTION = "GetNWISStations"
@@ -32,7 +35,9 @@ def _parse_xml_function_roots(xml_text: str):
         root = ElementTree.fromstring(xml_text)
     except ElementTree.ParseError as original_exc:
         try:
-            root = ElementTree.fromstring(f"<xml_compat_bundle>{xml_text}</xml_compat_bundle>")
+            root = ElementTree.fromstring(
+                f"<xml_compat_bundle>{xml_text}</xml_compat_bundle>"
+            )
         except ElementTree.ParseError:
             raise ValueError(f"Invalid XML: {original_exc}") from original_exc
 
@@ -140,7 +145,9 @@ def _parse_station_discovery_request(function_name: str, arguments):
         raise ValueError("Missing required tag: DataType")
 
     unsupported_datatypes = [
-        value for value in datatype_values if value not in _SUPPORTED_DISCOVERY_DATATYPES
+        value
+        for value in datatype_values
+        if value not in _SUPPORTED_DISCOVERY_DATATYPES
     ]
     if unsupported_datatypes:
         raise ValueError(f"Unsupported DataType: {unsupported_datatypes[0]}")
@@ -154,7 +161,8 @@ def _parse_station_discovery_request(function_name: str, arguments):
         "function_name": function_name,
         "workflow_types": datatype_values,
         "output_dir": Path(_required_child_text(arguments, "SaveIn")),
-        "desired_projection": _child_text(arguments, "DesiredProjection") or "EPSG:4326",
+        "desired_projection": _child_text(arguments, "DesiredProjection")
+        or "EPSG:4326",
         "bbox": _transform_region_bbox_to_wgs84(region),
         "region_projection": _required_child_text(region, "projection"),
     }
@@ -172,7 +180,8 @@ def _parse_add_data_request(function_name: str, workflow_type: str, arguments):
         "workflow_type": workflow_type,
         "station_ids": station_ids,
         "output_dir": Path(_required_child_text(arguments, "SaveIn")),
-        "desired_projection": _child_text(arguments, "DesiredProjection") or "EPSG:4326",
+        "desired_projection": _child_text(arguments, "DesiredProjection")
+        or "EPSG:4326",
     }
 
 
@@ -204,7 +213,9 @@ def _parse_xml_request_root(root):
 
 def parse_xml_requests(xml_text: str):
     """Parse one or more HydrologicToolbox XML function blocks."""
-    return [_parse_xml_request_root(root) for root in _parse_xml_function_roots(xml_text)]
+    return [
+        _parse_xml_request_root(root) for root in _parse_xml_function_roots(xml_text)
+    ]
 
 
 def _parse_xml_requests_with_skips(xml_text: str, debug_logger=None):
@@ -255,7 +266,8 @@ def format_add_data_success_xml(result_entries) -> str:
 def format_add_data_success_entries(result_entries) -> list[str]:
     """Return add-data XML success elements."""
     return [
-        f'<add_data type="CSV" subtype="{entry["workflow"]}" stationid="{entry["stationid"]}">{Path(entry["path"])}</add_data>'
+        f'<add_data type="CSV" subtype="{entry["workflow"]}" '
+        f'stationid="{entry["stationid"]}">{Path(entry["path"])}</add_data>'
         for entry in result_entries
     ]
 
@@ -274,7 +286,8 @@ def handle_xml_request(xml_text: str, debug_logger=None) -> str:
     for request in requests:
         _debug(
             debug_logger,
-            f"xml-compat: parsed function={request['function_name']} kind={request['kind']}",
+            f"xml-compat: parsed function={request['function_name']} "
+            f"kind={request['kind']}",
         )
         success_entries.extend(_handle_xml_request_mapping(request, debug_logger))
     if success_entries:
@@ -302,13 +315,15 @@ def _handle_xml_request_mapping(request, debug_logger=None) -> list[str]:
         for workflow, payload in results.items():
             _debug(
                 debug_logger,
-                f"station-discovery: workflow={workflow} wrote {payload['files']['shp']}",
+                # run_create_new_project_section returns an untyped dict.
+                # pyrefly: ignore[bad-index]
+                f"station-discovery: workflow={workflow} "
+                f"wrote {payload['files']['shp']}",
             )
         return format_station_success_entries(
-            {
-                workflow: payload["files"]["shp"]
-                for workflow, payload in results.items()
-            }
+            # Same untyped dict as above.
+            # pyrefly: ignore[bad-argument-type, bad-index]
+            {workflow: payload["files"]["shp"] for workflow, payload in results.items()}
         )
     if request["kind"] == "add_data":
         example = DEMO_CONFIG["example_stations"].get(request["workflow_type"], {})

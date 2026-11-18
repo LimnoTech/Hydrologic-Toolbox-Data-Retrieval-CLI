@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 import geopandas as gpd
-from pyproj import CRS, Transformer
 import pytest
 import shapefile
+from pyproj import CRS, Transformer
 from shapely.geometry import Point
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -31,9 +31,7 @@ def test_parser_accepts_xml_compat_debug_flag():
     """The XML compatibility command should expose optional debug diagnostics."""
     from hydrologic_toolbox_data_retrieval_cli.cli import build_parser
 
-    args = build_parser().parse_args(
-        ["xml-compat", "--debug", "--xml", "<function />"]
-    )
+    args = build_parser().parse_args(["xml-compat", "--debug", "--xml", "<function />"])
 
     assert args.command == "xml-compat"
     assert args.debug is True
@@ -198,8 +196,12 @@ def test_parse_station_request_transforms_region_bbox_to_wgs84():
     from hydrologic_toolbox_data_retrieval_cli.xml_compat import parse_xml_request
 
     west, south, east, north = (-82.859, 31.899, -82.013, 32.947)
-    source_projection = "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
-    transformer = Transformer.from_crs(CRS.from_epsg(4326), CRS.from_proj4(source_projection), always_xy=True)
+    source_projection = (
+        "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+    )
+    transformer = Transformer.from_crs(
+        CRS.from_epsg(4326), CRS.from_proj4(source_projection), always_xy=True
+    )
     west_x, south_y = transformer.transform(west, south)
     east_x, north_y = transformer.transform(east, north)
 
@@ -251,7 +253,9 @@ def test_parse_add_data_request_keeps_multiple_station_ids():
 
 def test_format_station_success_xml_lists_output_paths():
     """Station XML success payload should enumerate shapefile paths."""
-    from hydrologic_toolbox_data_retrieval_cli.xml_compat import format_station_success_xml
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import (
+        format_station_success_xml,
+    )
 
     response = format_station_success_xml(
         {
@@ -260,17 +264,22 @@ def test_format_station_success_xml_lists_output_paths():
         }
     )
 
+    # The source renders str(Path), which uses backslashes on Windows.
+    discharge = str(Path("/tmp/NWIS_Stations_discharge.shp"))
+    gw_daily = str(Path("/tmp/NWIS_Stations_gw_daily.shp"))
     assert response == (
         "<success>"
-        '<add_shape workflow="discharge">/tmp/NWIS_Stations_discharge.shp</add_shape>'
-        '<add_shape workflow="gw_daily">/tmp/NWIS_Stations_gw_daily.shp</add_shape>'
+        f'<add_shape workflow="discharge">{discharge}</add_shape>'
+        f'<add_shape workflow="gw_daily">{gw_daily}</add_shape>'
         "</success>"
     )
 
 
 def test_format_add_data_success_xml_lists_output_paths():
     """Add-data XML success payload should enumerate CSV paths."""
-    from hydrologic_toolbox_data_retrieval_cli.xml_compat import format_add_data_success_xml
+    from hydrologic_toolbox_data_retrieval_cli.xml_compat import (
+        format_add_data_success_xml,
+    )
 
     response = format_add_data_success_xml(
         [
@@ -289,15 +298,19 @@ def test_format_add_data_success_xml_lists_output_paths():
 
     assert response == (
         "<success>"
-        '<add_data type="CSV" subtype="discharge" stationid="02336106">/tmp/discharge_02336106.csv</add_data>'
-        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">/tmp/gw_daily_324209082430201.csv</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        f"{Path('/tmp/discharge_02336106.csv')}</add_data>"
+        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">'
+        f"{Path('/tmp/gw_daily_324209082430201.csv')}</add_data>"
         "</success>"
     )
 
 
 def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
     """Station shapefile export should honor an explicit output projection."""
-    from hydrologic_toolbox_data_retrieval_cli.exports import export_station_shapefile_artifacts
+    from hydrologic_toolbox_data_retrieval_cli.exports import (
+        export_station_shapefile_artifacts,
+    )
 
     frame = gpd.GeoDataFrame(
         {
@@ -314,7 +327,9 @@ def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
         frame,
         tmp_path,
         "stations",
-        output_projection="+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs",
+        output_projection=(
+            "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+        ),
     )
 
     prj_text = output["shp"].with_suffix(".prj").read_text(encoding="utf-8")
@@ -325,7 +340,9 @@ def test_projection_aware_station_export_reprojects_output(tmp_path: Path):
     assert shape.points[0][1] != pytest.approx(32.5)
 
 
-def test_handle_xml_request_station_discovery_returns_success_xml(monkeypatch, tmp_path: Path):
+def test_handle_xml_request_station_discovery_returns_success_xml(
+    monkeypatch, tmp_path: Path
+):
     """Station-discovery XML requests should return add_shape success XML."""
     from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
@@ -373,9 +390,7 @@ def test_handle_xml_request_station_discovery_returns_success_xml(monkeypatch, t
     )
 
     assert response == (
-        "<success>"
-        f'<add_shape workflow="discharge">{expected_shp}</add_shape>'
-        "</success>"
+        f'<success><add_shape workflow="discharge">{expected_shp}</add_shape></success>'
     )
 
 
@@ -415,13 +430,17 @@ def test_handle_xml_request_add_data_returns_success_xml(monkeypatch, tmp_path: 
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_a}</add_data>'
-        f'<add_data type="CSV" subtype="discharge" stationid="02336107">{expected_b}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        f"{expected_a}</add_data>"
+        '<add_data type="CSV" subtype="discharge" stationid="02336107">'
+        f"{expected_b}</add_data>"
         "</success>"
     )
 
 
-def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp_path: Path):
+def test_handle_xml_request_bundle_uses_valid_add_data_function(
+    monkeypatch, tmp_path: Path
+):
     """HydrologicToolbox can send multiple function blocks in one XML argument."""
     from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
@@ -469,7 +488,8 @@ def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_csv}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02357150">'
+        f"{expected_csv}</add_data>"
         "</success>"
     )
     assert "xml-compat: found 2 function blocks" in messages
@@ -480,8 +500,10 @@ def test_handle_xml_request_bundle_uses_valid_add_data_function(monkeypatch, tmp
     )
 
 
-def test_handle_xml_request_bundle_combines_add_data_results(monkeypatch, tmp_path: Path):
-    """Multiple valid add-data function blocks should return one combined success XML."""
+def test_handle_xml_request_bundle_combines_add_data_results(
+    monkeypatch, tmp_path: Path
+):
+    """Multiple valid add-data function blocks return one combined success XML."""
     from hydrologic_toolbox_data_retrieval_cli import xml_compat
 
     expected_discharge = tmp_path / "discharge_02357150.csv"
@@ -529,8 +551,10 @@ def test_handle_xml_request_bundle_combines_add_data_results(monkeypatch, tmp_pa
     ]
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02357150">{expected_discharge}</add_data>'
-        f'<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">{expected_daily}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02357150">'
+        f"{expected_discharge}</add_data>"
+        '<add_data type="CSV" subtype="gw_daily" stationid="324209082430201">'
+        f"{expected_daily}</add_data>"
         "</success>"
     )
 
@@ -574,12 +598,17 @@ def test_handle_xml_request_add_data_emits_debug_messages(monkeypatch, tmp_path:
 
     assert response == (
         "<success>"
-        f'<add_data type="CSV" subtype="discharge" stationid="02336106">{expected_csv}</add_data>'
+        '<add_data type="CSV" subtype="discharge" stationid="02336106">'
+        f"{expected_csv}</add_data>"
         "</success>"
     )
     assert "xml-compat: received XML request" in messages
     assert "xml-compat: parsed function=GetNWISDailyDischarge kind=add_data" in messages
-    assert "add-data: starting workflow=discharge stations=1 output_dir=/tmp/out" in messages
+    output_dir = Path("/tmp/out")  # rendered with str(), so backslashes on Windows
+    assert (
+        f"add-data: starting workflow=discharge stations=1 output_dir={output_dir}"
+        in messages
+    )
     assert "add-data: station 02336106 download starting" in messages
     assert "fake download reached for 02336106" in messages
     assert f"add-data: station 02336106 wrote {expected_csv}" in messages
@@ -733,7 +762,9 @@ def test_run_cli_xml_compat_error_returns_nonzero(monkeypatch, capsys):
     """The CLI should print XML errors and return a nonzero exit code."""
     from hydrologic_toolbox_data_retrieval_cli import cli
 
-    monkeypatch.setattr(cli, "handle_xml_request", lambda xml_text: "<error>bad request</error>")
+    monkeypatch.setattr(
+        cli, "handle_xml_request", lambda xml_text: "<error>bad request</error>"
+    )
 
     result = cli.run_cli(["xml-compat", "--xml", "<function />"])
     output = capsys.readouterr().out.strip()

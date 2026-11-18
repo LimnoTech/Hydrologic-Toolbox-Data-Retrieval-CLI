@@ -42,15 +42,19 @@ want and unpack it anywhere.
 
 ## Build From Source
 
-To compile the executable yourself, on Windows:
+To compile the executable yourself, on Windows, install [pixi](https://pixi.sh) (0.84.2 or newer) and run these
+from the repo root. They work the same in PowerShell, cmd, zsh and bash:
 
-```powershell
-pip install -e ".[build]"
-pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec
+```
+pixi install -e build
+pixi run -e build build-exe
 ```
 
 The build is written to
 `dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe`.
+
+CI builds the same artifact on Windows for pull requests into `main`, for manual
+(`workflow_dispatch`) runs, and for `v*` tags.
 
 ## Run The CLI
 
@@ -66,6 +70,20 @@ or by full path:
 ```powershell
 .\dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe --help
 ```
+
+## Run Without The Exe
+
+The executable is Windows-only, but the CLI itself runs in the pixi environments, which are locked
+for linux-64, osx-arm64 and win-64. From the repo root in zsh or bash (in PowerShell or cmd on
+Windows, the same commands work):
+
+```
+pixi install
+pixi run cli -- --help
+```
+
+Everything after `--` goes to the CLI, so `pixi run cli -- --version` and
+`pixi run cli -- xml-compat --help` work the same way.
 
 ## HydrologicToolbox XML
 
@@ -202,3 +220,51 @@ For shapefile attribute tables, the CLI maps raw Water Data field names to NWIS-
 | `hydrologic_unit_code` | `huc_cd` | `huc_cd` |
 | `drainage_area` | `drain_area_va` | `drain_area` |
 | `geometry` | `dec_lat_va` / `dec_long_va` | `dec_lat_va` / `dec_long_v` |
+
+## Development
+
+Install [pixi](https://pixi.sh) 0.84.2 or newer (`pixi self-update` upgrades an older one), then from the repo root:
+
+```
+pixi install
+```
+
+A checkout whose pixi environments predate this change (v0.1.0 installed the package as an
+editable PyPI dependency) needs `pixi reinstall -e <env> hydrologic-toolbox-data-retrieval-cli`
+once per environment, or the package will not import.
+
+The `default` environment also carries the Jupyter stack (JupyterLab, jupytext, matplotlib and
+ipykernel). The leaner `ci` environment (core plus test and lint tools) is what CI uses for tests.
+
+Every task below runs with `pixi run <task>`, the same in PowerShell, cmd, zsh and bash. The
+`build-exe` task lives in the `build` environment, so it is run as `pixi run -e build build-exe`.
+
+| Task | What it does |
+| --- | --- |
+| `test` | Runs the offline test suite (tests marked `live` are deselected). |
+| `test-live` | Runs only the `live` tests, which call the live USGS Water Data endpoints. |
+| `lint` | Runs `ruff check`. |
+| `format` | Runs `ruff format`. |
+| `typecheck` | Runs `pyrefly check`. |
+| `build-exe` | Builds the PyInstaller bundle for the OS it runs on, a Windows exe when run on Windows (`build` environment). It first reinstalls the project package so the bundle reports the current git version. |
+| `cli` | Runs `python -m hydrologic_toolbox_data_retrieval_cli`; pass CLI arguments after `--`. |
+
+CI (see [.github/workflows/ci.yaml](.github/workflows/ci.yaml)) works like this:
+
+- On a push, Ubuntu runs the offline tests, the lint check, the format check and the type check.
+- On pull requests into `main` and on manual (`workflow_dispatch`) runs, Ubuntu, macOS and Windows
+  run the tests, lint and format check, and Ubuntu runs the type check.
+- The Windows executable build, with smoke tests and a bundle size measurement, runs on pull
+  requests into `main`, on manual runs and on `v*` tags. A `v*` tag also attaches the zip to a
+  draft GitHub Release.
+- Changes that touch only markdown files or `.gitignore` do not trigger branch or pull request
+  runs. A `v*` tag always triggers a run.
+
+Release history is in [CHANGELOG.md](CHANGELOG.md).
+
+Working with an AI coding agent? See [AGENTS.md](AGENTS.md). Runnable examples are in
+[examples/](examples/).
+
+## Credits
+
+Original author: Luka Ludden (LimnoTech). Maintained by Anthony Aufdenkampe (LimnoTech).

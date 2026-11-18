@@ -1,9 +1,9 @@
-"""CLI-first app entrypoint for the Hydrologic-Toolbox-DataRetrieval-CLI packaged app."""
+"""CLI-first entrypoint for the Hydrologic-Toolbox-DataRetrieval-CLI app."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import sys
+from collections.abc import Sequence
 
 
 def run_cli(argv: Sequence[str]) -> int:

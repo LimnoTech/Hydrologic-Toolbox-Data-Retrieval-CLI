@@ -44,8 +44,8 @@ reviewer approves together with the plan.
 - Probe and test targets: `02225500` (discharge), `324209082430201` (gw_daily),
   `410947071344803` (gw_periodic), bbox `-82.859 31.899 -82.013 32.947`. Keep live request counts
   small.
-- dataretrieval floor: `>=1.4` in both dependency lists from group 3 on. Groups 1 and 2 pin
-  `<1.4` in both.
+- dataretrieval floor: `>=1.4` in `[project.dependencies]` from group 3 on. Groups 1 and 2 pin
+  `<1.4`. (Before the 2026-11-16 amendment this read "both dependency lists"; there is now one.)
 - Python `3.12.*` in pixi `core`; `requires-python = ">=3.11"`.
 - Ruff: `line-length = 88`, `extend-exclude = ["examples"]`, select
   `F, E, W, I, UP, B, Q, SIM, TID, C90, PLW1514` with `preview = true` and
@@ -437,6 +437,121 @@ Branch: `dr14/g1-packaging-ci` from local `round/dataretrieval-1-4`. dataretriev
   records the ruling in the `pyproject.toml` comment, adding or exempting `pyarrow` in both lists.
   Re-lock if needed. That commit is reviewed by the controller and handed back.
 
+### Amendment, 2026-11-16 (gate 1): Tasks 1.6–1.8
+
+Anthony's rulings at the gate replace spec Part A items 3 and 4 and add item 11 (see the spec's
+amendment). Group 1 is reworked on `dr14/g1-packaging-ci` before PR #18 merges.
+
+The controller probed the target manifest in a throwaway worktree; the diff is
+`.agent-workspace/probe-one-list-pyproject.diff`. The probe:
+- locked with empty caches;
+- resolved `geopandas-base` and an OpenBLAS `libblas` on win-64, with no scipy, scikit-learn,
+  mapclassify, MKL, GDAL, pyogrio or pyarrow;
+- passed LimnoTech's packaging audit apart from the two expected pyarrow FAILs;
+- built a macOS exe that passed the smoke checks: 157.6 MB zipped, against 214.2 MB before.
+
+Read the packaging guide first: `../limno-agent-kit/skills/packaging/python-scientific/guide.md`,
+sections "The pattern" and "Re-locking and verifying a solve". It is private; name it, never link
+it.
+
+### Task 1.6: One dependency list
+
+**Files:**
+
+- Modify: `pyproject.toml`, `.github/workflows/ci.yaml`, `CHANGELOG.md`, `README.md` (only where
+  it names the extra or the parity test)
+- Create: `tests/test_package_section.py`
+- Delete: `tests/test_dependency_parity.py`
+- Lock: `pixi.lock` (Step 5, made by the controller)
+
+- [ ] **Step 1: Write `tests/test_package_section.py`**, adapted from
+  `../GLM_modeling/tests/test_package_section.py`.
+  - Keep:
+    - the record check, which reads each self record in `pixi.lock` and asserts every
+      `[project.dependencies]` requirement, with its specifier;
+    - the `sqlite >=3.38` wherever `libgdal` lock check;
+    - the check that CI rebuilds the source package (Step 4).
+  - Drop the family-package checks (no `UPSTREAMS`, no `TRANSITIVE`). `PYPI_ONLY` is empty.
+  - Replace the pyarrow lock check with `test_pyarrow_is_not_locked`. Its docstring gives the
+    exemption and its numbers (spec amendment, item 4).
+  - Run it and confirm it fails: the manifest has no package section yet.
+- [ ] **Step 2: Rewrite the dependency tables** to spec amendment items 3 and 4, starting from
+  the probe diff.
+  - Use water-data-engine's header-comment style: say where the record comes from, and that
+    tool and notebook packages live in the features.
+  - `[tool.pixi.package] version = "0.1.0"`, the last release, bumped in each release PR.
+  - The pyarrow comment under `dependencies` gives the exemption and the numbers.
+  - Remove `[project.optional-dependencies]`, and the conda half of the list from `feature.core`.
+  - Keep the `refresh-version` and `build-exe` tasks as they are.
+- [ ] **Step 3: Pin OpenBLAS on win-64.** In `[tool.pixi.target.win-64.dependencies]` add
+  `libblas = { version = "*", build = "*openblas" }`, with a comment: conda-forge resolves Intel
+  MKL there otherwise, and its DLLs land in the exe.
+- [ ] **Step 4: CI rebuilds the source package.** After the setup-pixi step in the `test` job,
+  add `pixi reinstall -e ci hydrologic-toolbox-data-retrieval-cli`; in the `typecheck` job, the
+  same with `-e default`. The reason, for the comment: a cached environment is not rebuilt, so
+  the git-ignored `_version.py` is missing (the packaging guide's gotcha). The `build-exe` job
+  already reinstalls, through the `refresh-version` task. The Step 1 test accepts either form.
+- [ ] **Step 5: Lock (controller).** Follow the guide's "Make the lock the way CI will read it":
+  - a worktree with no `.pixi`, at a short path;
+  - empty `PIXI_CACHE_DIR` and `RATTLER_CACHE_DIR` for `pixi lock`;
+  - for each environment (`default`, `ci`, `build`), a cold `pixi install -e <env> --locked -v`
+    with another empty cache pair, then a warm one.
+
+  Commit the lock alone.
+- [ ] **Step 6: Delete the parity test; update docs.**
+  - CHANGELOG `[Unreleased]`:
+    - remove the pyarrow and parity-test bullets;
+    - replace the `jupyter` extra bullet with the pixi feature alone;
+    - add the one-list packaging, and the pyarrow exemption with its numbers.
+  - README: only lines that name the extra or the parity test.
+- [ ] **Step 7: Verify.** Each one redirected to a file, with the exit code:
+  - `pixi install --locked`;
+  - `pixi run test` and `pixi run -e ci test`; record the counts, which change from 75;
+  - lint, `ruff format --check` and typecheck;
+  - actionlint;
+  - `grep '^\s*- pypi:' pixi.lock | sort -u`, which shows only local entries;
+  - the packaging audit,
+    `.pixi/envs/default/bin/python ../limno-agent-kit/skills/packaging/python-scientific/audit_packaging.py`,
+    which shows exactly the two pyarrow FAILs;
+  - `pixi list -e build --platform win-64`, which shows none of scipy, scikit-learn,
+    mapclassify, mkl, libgdal, pyogrio or pyarrow.
+- [ ] **Step 8: Commit** in three commits, each with a body saying why:
+  1. `Declare dependencies once, as a pixi-build source package` (manifest, test, CI, parity
+     test deleted);
+  2. `Re-lock` (lock only);
+  3. `Update CHANGELOG and README for one dependency list`.
+
+### Task 1.7: Hold the bundle at 250 MB
+
+**Files:**
+
+- Modify: `scripts/measure_bundle.py`, `tests/test_measure_bundle.py`, `.github/workflows/ci.yaml`
+
+- [ ] **Step 1: Tests first.** With `--max-mb 250`:
+  - a bundle under the limit prints its row and exits 0;
+  - a bundle over it still prints its row, then prints exactly one stderr line,
+    `bundle zip is <x> MB, over the 250 MB limit`, and exits 1.
+
+  Use a tiny bundle and a limit of a fraction of a MB, so the tests run in milliseconds on all
+  three OSes.
+- [ ] **Step 2: Implement `--max-mb`** (float, optional; no limit when absent).
+- [ ] **Step 3: CI.** The "Measure bundle size and startup time" step passes `--max-mb 250`. Its
+  comment cites v0.1.0's 243 MB and spec amendment item 11. The step must still write the row
+  to the job summary before failing.
+- [ ] **Step 4: Local build check (controller).** Run `pixi run -e build build-exe` on macOS and
+  the three smoke checks by hand, then `measure_bundle.py` with `--max-mb 250`. Record the row.
+- [ ] **Step 5: Commit.** Message: `Fail the exe build when its zip passes 250 MB`.
+
+### Task 1.8: Windows measurement and the reworked gate
+
+- [ ] **Step 1:** Hand back for Anthony to push. Draft PR #19 then runs the three-OS tests and
+  the Windows build. Read the log, not the badge:
+  - the collected counts on all three OSes;
+  - the smoke checks;
+  - the size row against 243 MB (v0.1.0) and 296.5 MB (group 1's first build).
+- [ ] **Step 2:** Record the Windows row in the ledger and the CHANGELOG bullet. Rewrite PR #18's
+  description in full. Then the gate procedure.
+
 ---
 
 ## Group 2: AGENTS.md and CLAUDE.md
@@ -532,12 +647,12 @@ Branch: `dr14/g3-dataretrieval-1-4` from local `round/dataretrieval-1-4`.
 
 - Modify: `pyproject.toml`, `pixi.lock`
 
-- [ ] **Step 1: Edit both lists.** Change `dataretrieval>=1.3,<1.4` to `dataretrieval>=1.4` on the
-  PyPI side and `">=1.4"` on the conda side, and delete the temporary comment. Then run
+- [ ] **Step 1: Edit the one list.** Change `dataretrieval>=1.3,<1.4` to `dataretrieval>=1.4` in
+  `[project.dependencies]`, and delete the temporary comment. Then run
   `pixi update dataretrieval` (not `pixi lock`: see AGENTS.md § lock/update/upgrade) and
   `pixi install --locked`.
 - [ ] **Step 2: Verify.** `pixi list -e default dataretrieval` and `pixi list -e ci dataretrieval`
-  both show 1.4.x. `pixi run test` passes, including the parity bounds. The existing offline tests
+  both show 1.4.x. `pixi run test` passes, including the package-record test. The existing offline tests
   use fake modules and are expected to pass unchanged; a failure here is fixed in this task and
   recorded in the ledger. Run the no-PyPI-fallback grep.
 - [ ] **Step 3: Commit.** Message: `Require dataretrieval 1.4 (Water Data API v1)`. This comes

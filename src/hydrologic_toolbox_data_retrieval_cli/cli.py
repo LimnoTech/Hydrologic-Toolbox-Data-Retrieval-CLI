@@ -1,17 +1,20 @@
-"""Command-line interface for the Hydrologic-Toolbox-DataRetrieval-CLI sidecar package."""
+"""Command-line interface for the Hydrologic-Toolbox-DataRetrieval-CLI package."""
 
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import os
-from pathlib import Path
 import sys
 import traceback
+from datetime import UTC, datetime
+from pathlib import Path
 
+from hydrologic_toolbox_data_retrieval_cli import __version__
 from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
 from hydrologic_toolbox_data_retrieval_cli.exports import format_artifact_messages
-from hydrologic_toolbox_data_retrieval_cli.station_discovery import run_create_new_project_section
+from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
+    run_create_new_project_section,
+)
 from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
 from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
 
@@ -36,7 +39,7 @@ def _file_debug_logger(log_path):
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(message):
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="seconds")
         lines = str(message).splitlines() or [""]
         with log_path.open("a", encoding="utf-8") as file_obj:
             for line in lines:
@@ -95,6 +98,7 @@ def build_parser():
         prog="hydrologic-toolbox-data-retrieval-cli",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create_parser = subparsers.add_parser("create-new-project")
@@ -127,7 +131,9 @@ def build_parser():
     )
     add_parser.add_argument(
         "--station-id",
-        help="USGS station identifier. Falls back to the demo station for the workflow.",
+        help=(
+            "USGS station identifier. Falls back to the demo station for the workflow."
+        ),
     )
     add_parser.add_argument(
         "--start-date",

@@ -144,6 +144,53 @@ the reader needs of the pattern, since the skill itself is private.
     hatch-vcs version. It adds to the CLI surface without touching the XML/CSV/shapefile
     contract, and lets Paul confirm which build he is testing.
 
+### Amendment, 2026-11-16 (gate 1): one dependency list, no pyarrow, a lean bundle
+
+Anthony's rulings at the group 1 gate. They replace items 3 and 4 above and add item 11.
+The probe and measurements behind them are in the ledger.
+
+3. **Dependencies, declared once.** This replaces "declared twice". The runtime dependencies
+   are `[project.dependencies]`, in PyPI names, and nothing else. The repo becomes a
+   pixi-build source package, following LimnoTech's packaging guide (python-scientific
+   variant; private) and water-data-engine's `pyproject.toml`:
+   - `preview = ["pixi-build"]`;
+   - `[tool.pixi.dependencies]` names the repo `{ path = "." }`;
+   - a `[tool.pixi.package]` section, with `ignore-pypi-mapping = false`, so pixi-build-python
+     maps the list to conda names.
+
+   `[tool.pixi.feature.core.dependencies]` keeps only `python`. The `jupyter` extra is
+   removed, and its packages stay in the pixi `jupyter` feature. `tests/test_dependency_parity.py`
+   is replaced by `tests/test_package_section.py`, adapted from GLM_modeling's: the record
+   check, the `sqlite` lock check, and the check that CI rebuilds the source package. The
+   mapping turns `geopandas` into `geopandas-base`, which drops `mapclassify`, `scikit-learn`,
+   `scipy`, `matplotlib`, `pyogrio` and GDAL. The CLI uses none of them: shapefiles are written
+   with `pyshp`, and `pyproj` is declared directly.
+4. **pyarrow is excluded.** This replaces the measured-inclusion rule. Measured on the
+   Windows runner, pyarrow added 23.9 MB to the zipped bundle (296.5 → 320.4 MB) and 0.04 s
+   to `--help`. Measured locally (macOS, pandas 3.1.1), it gave no benefit the Toolbox would
+   notice:
+   - The CLI's dataretrieval calls all take the OGC JSON path: `resp.json()`, then
+     `GeoDataFrame.from_features` or `json_normalize`. Building the tables there was 7–10%
+     slower with pyarrow.
+   - `to_csv`, the CLI's main output step, was unchanged.
+   - Memory fell 60–65%, on tables of a few MB.
+   - pandas 3 does not switch `read_csv` to the pyarrow engine; only string storage changes.
+
+   So the repo is exempt from the family rule "pandas implies pyarrow". The exemption and its
+   measurements are recorded in `pyproject.toml`, and in AGENTS.md (group 2). The test asserts
+   that pyarrow is absent from the lock, so a dependency that starts pulling it in is caught.
+   LimnoTech's packaging audit FAILs its two pyarrow checks on this repo; that is known and
+   accepted.
+11. **A lean Windows bundle, held at 250 MB.** v0.1.0's zip was 243 MB. Group 1's first build
+    was 296.5 MB without pyarrow, and the growth came from the full `geopandas` (item 3) and
+    Intel MKL as the Windows BLAS. Pin `libblas` to its OpenBLAS build on win-64.
+    `scripts/measure_bundle.py` takes `--max-mb`, and CI fails the exe build when the zip
+    exceeds 250 MB (10⁶ bytes).
+
+    On macOS, the one-list probe's bundle was 157.6 MB zipped against 214.2 MB before, and
+    `--help` took 0.60 s against 0.74 s. A PyInstaller build from the pixi-build environment
+    passed the smoke checks, and its `--version` matched `_version.py`.
+
 ## Part B — dataretrieval 1.4
 
 **Probe first, then change code.** water-data-engine (private; see Constraints) moved to

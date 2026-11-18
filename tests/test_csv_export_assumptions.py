@@ -47,7 +47,9 @@ def test_forced_quote_fields_are_the_csv_quoting_control():
 
 def test_reduced_header_quotes_text_identifier_fields(tmp_path):
     """Discharge/daily metadata should quote fields Hydrologic Toolbox reads as text."""
-    from hydrologic_toolbox_data_retrieval_cli.exports import export_timeseries_artifacts
+    from hydrologic_toolbox_data_retrieval_cli.exports import (
+        export_timeseries_artifacts,
+    )
 
     frame = pd.DataFrame(
         {
@@ -91,7 +93,9 @@ def test_reduced_header_quotes_text_identifier_fields(tmp_path):
 
 def test_periodic_header_quotes_text_identifier_fields(tmp_path):
     """Periodic metadata should quote station, HUC, and code-like text fields."""
-    from hydrologic_toolbox_data_retrieval_cli.exports import export_timeseries_artifacts
+    from hydrologic_toolbox_data_retrieval_cli.exports import (
+        export_timeseries_artifacts,
+    )
 
     frame = pd.DataFrame(
         {
@@ -131,7 +135,9 @@ def test_periodic_header_quotes_text_identifier_fields(tmp_path):
 
 def test_timeseries_csv_write_replaces_existing_file(tmp_path):
     """Successful retries should replace an existing CSV with fresh output."""
-    from hydrologic_toolbox_data_retrieval_cli.exports import export_timeseries_artifacts
+    from hydrologic_toolbox_data_retrieval_cli.exports import (
+        export_timeseries_artifacts,
+    )
 
     csv_path = tmp_path / "discharge_04193500.csv"
     csv_path.write_text("old stale content\n", encoding="utf-8")
