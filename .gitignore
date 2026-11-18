@@ -230,7 +230,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 dist/outputs/.DS_Store
-src/hydrologic_toolbox_data_retrieval_cli/_version.py
-src/hydrologic_toolbox_data_retrieval_cli/_app_key.py
+src/hydrotoolbox_dataretrieval/_version.py
+src/hydrotoolbox_dataretrieval/_app_key.py
 /.agent-workspace/
 examples/outputs/

@@ -1,4 +1,4 @@
-"""Command-line interface for the Hydrologic-Toolbox-DataRetrieval-CLI package."""
+"""Command-line interface for the hydrotoolbox-dataretrieval package."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hydrologic_toolbox_data_retrieval_cli import __version__
-from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
-from hydrologic_toolbox_data_retrieval_cli.exports import format_artifact_messages
-from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
+from hydrotoolbox_dataretrieval import __version__
+from hydrotoolbox_dataretrieval.config import DEMO_CONFIG
+from hydrotoolbox_dataretrieval.exports import format_artifact_messages
+from hydrotoolbox_dataretrieval.station_discovery import (
     run_create_new_project_section,
 )
-from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
-from hydrologic_toolbox_data_retrieval_cli.xml_compat import handle_xml_request
+from hydrotoolbox_dataretrieval.timeseries import get_usgs_timeseries
+from hydrotoolbox_dataretrieval.xml_compat import handle_xml_request
 
 _WORKFLOW_CHOICES = ("discharge", "gw_daily", "gw_periodic")
 _TRUTHY_DEBUG_VALUES = {"1", "true", "yes", "on"}
@@ -95,7 +95,7 @@ def _log_process_context(debug_logger, argv):
 def build_parser():
     """Build the top-level CLI parser for the sidecar package."""
     parser = argparse.ArgumentParser(
-        prog="hydrologic-toolbox-data-retrieval-cli",
+        prog="hydrotoolbox-dataretrieval",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--version", action="version", version=__version__)

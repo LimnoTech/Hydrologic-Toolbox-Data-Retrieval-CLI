@@ -107,7 +107,7 @@ jobs:
         # git-ignored _version.py its hatch-vcs build hook writes is missing
         # from a fresh checkout (LimnoTech's packaging guide;
         # test_ci_rebuilds_the_source_package).
-        run: pixi reinstall --locked -e ci hydrologic-toolbox-data-retrieval-cli
+        run: pixi reinstall --locked -e ci hydrotoolbox-dataretrieval
 
       # Steps are kept separate so a failure names the tool that failed.
       - name: Tests
@@ -154,7 +154,7 @@ jobs:
         # git-ignored _version.py its hatch-vcs build hook writes is missing
         # from a fresh checkout (LimnoTech's packaging guide;
         # test_ci_rebuilds_the_source_package).
-        run: pixi reinstall --locked -e default hydrologic-toolbox-data-retrieval-cli
+        run: pixi reinstall --locked -e default hydrotoolbox-dataretrieval
 
       - name: Type check
         run: pixi run typecheck
@@ -198,12 +198,12 @@ jobs:
       # PowerShell does not turn into errors by itself.
       - name: Smoke test the exe
         run: |
-          $exe = "dist\hydrologic_toolbox_data_retrieval_cli\hydrologic_toolbox_data_retrieval_cli.exe"
+          $exe = "dist\hydrotoolbox_dataretrieval\hydrotoolbox_dataretrieval.exe"
 
           & $exe --help | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "--help exited $LASTEXITCODE" }
 
-          $expected = (pixi run -e build python -c "from hydrologic_toolbox_data_retrieval_cli._version import __version__; print(__version__)" | Out-String).Trim()
+          $expected = (pixi run -e build python -c "from hydrotoolbox_dataretrieval._version import __version__; print(__version__)" | Out-String).Trim()
           if ($LASTEXITCODE -ne 0 -or -not $expected) { throw "could not read the build's __version__" }
           $actual = (& $exe --version | Out-String).Trim()
           if ($LASTEXITCODE -ne 0) { throw "--version exited $LASTEXITCODE" }
@@ -226,13 +226,13 @@ jobs:
 
       - name: Measure bundle size and startup time
         run: |
-          $bundle = "dist\hydrologic_toolbox_data_retrieval_cli"
+          $bundle = "dist\hydrotoolbox_dataretrieval"
           "| Build | Zip (MB, 10^6 bytes) | --help, best of 5 (s) |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           "| --- | --- | --- |" | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           # Hold the zip at 250 MB (v0.1.0 was 243 MB; spec amendment item 11). Write
           # the row before failing, so an over-limit build still shows its size.
           # Unredirected stderr (the over-limit line) reaches the log, not $row.
-          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrologic_toolbox_data_retrieval_cli.exe" --label "as built" --max-mb 250
+          $row = pixi run -e build python scripts/measure_bundle.py $bundle "$bundle\hydrotoolbox_dataretrieval.exe" --label "as built" --max-mb 250
           $code = $LASTEXITCODE
           if ($row) { $row | Out-File $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append }
           if ($code -ne 0) { throw "measure_bundle.py exited $code" }
@@ -243,8 +243,8 @@ jobs:
       - name: Upload exe bundle
         uses: actions/upload-artifact@v7
         with:
-          name: hydrologic_toolbox_data_retrieval_cli-${{ github.sha }}
-          path: dist/hydrologic_toolbox_data_retrieval_cli/
+          name: hydrotoolbox_dataretrieval-${{ github.sha }}
+          path: dist/hydrotoolbox_dataretrieval/
 
       # UNTESTED until the first real `v*` tag: it cannot run before one exists.
       # Kept small so reading the YAML is the review.
@@ -253,5 +253,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$env:GITHUB_REF_NAME" dist/hydrologic_toolbox_data_retrieval_cli.zip --draft --title "$env:GITHUB_REF_NAME" --notes "Draft: publish after Paul Duda has tested this build in the Hydrologic Toolbox."
+          gh release create "$env:GITHUB_REF_NAME" dist/hydrotoolbox_dataretrieval.zip --draft --title "$env:GITHUB_REF_NAME" --notes "Draft: publish after Paul Duda has tested this build in the Hydrologic Toolbox."
           if ($LASTEXITCODE -ne 0) { throw "gh release create exited $LASTEXITCODE" }

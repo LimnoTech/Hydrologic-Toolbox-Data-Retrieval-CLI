@@ -1,4 +1,4 @@
-"""CLI-first entrypoint for the Hydrologic-Toolbox-DataRetrieval-CLI app."""
+"""CLI-first entrypoint for the hydrotoolbox-dataretrieval app."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 def run_cli(argv: Sequence[str]) -> int:
     """Run the command-line interface."""
-    from hydrologic_toolbox_data_retrieval_cli.cli import run_cli as cli_main
+    from hydrotoolbox_dataretrieval.cli import run_cli as cli_main
 
     return cli_main(argv)
 

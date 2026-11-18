@@ -6,11 +6,11 @@ import warnings
 
 import pandas as pd
 
-from hydrologic_toolbox_data_retrieval_cli.exports import (
+from hydrotoolbox_dataretrieval.exports import (
     export_station_shapefile_artifacts,
     format_artifact_messages,
 )
-from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+from hydrotoolbox_dataretrieval.frame_types import (
     categorize_existing_columns,
 )
 

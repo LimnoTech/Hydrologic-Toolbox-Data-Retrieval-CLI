@@ -3,7 +3,7 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hydrologic-toolbox-data-retrieval-cli"
+name = "hydrotoolbox-dataretrieval"
 dynamic = ["version"]
 description = "CLI-only app for Hydrologic Toolbox data retrieval workflows."
 readme = "README.md"
@@ -68,12 +68,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI"
-Repository = "https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI"
-Issues = "https://github.com/LimnoTech/Hydrologic-Toolbox-Data-Retrieval-CLI/issues"
+Homepage = "https://github.com/LimnoTech/hydrotoolbox-dataretrieval"
+Repository = "https://github.com/LimnoTech/hydrotoolbox-dataretrieval"
+Issues = "https://github.com/LimnoTech/hydrotoolbox-dataretrieval/issues"
 
 [project.scripts]
-hydrologic-toolbox-data-retrieval-cli = "hydrologic_toolbox_data_retrieval_cli.app:main"
+hydrotoolbox-dataretrieval = "hydrotoolbox_dataretrieval.app:main"
 
 # ---------------------------------------------------------------------------
 # Build
@@ -85,10 +85,10 @@ source = "vcs"
 fallback-version = "0.0.0"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/hydrologic_toolbox_data_retrieval_cli/_version.py"
+version-file = "src/hydrotoolbox_dataretrieval/_version.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hydrologic_toolbox_data_retrieval_cli"]
+packages = ["src/hydrotoolbox_dataretrieval"]
 
 # ---------------------------------------------------------------------------
 # Pixi workspace
@@ -106,7 +106,7 @@ preview = ["pixi-build"]
 # Self-install as a pixi-build source package, in the implicit default feature so every
 # environment gets it: the repo installs itself through the same record a consumer would get.
 [tool.pixi.dependencies]
-hydrologic-toolbox-data-retrieval-cli = { path = "." }
+hydrotoolbox-dataretrieval = { path = "." }
 
 # conda-forge resolves Intel MKL as the BLAS on win-64 otherwise, and its DLLs land in the exe
 # (spec amendment, item 11: the zipped bundle is held at 250 MB). A root target table belongs to
@@ -114,12 +114,12 @@ hydrologic-toolbox-data-retrieval-cli = { path = "." }
 [tool.pixi.target.win-64.dependencies]
 libblas = { version = "*", build = "*openblas" }
 
-# hydrologic-toolbox-data-retrieval-cli as a pixi-build source package, following LimnoTech's
+# hydrotoolbox-dataretrieval as a pixi-build source package, following LimnoTech's
 # packaging guide (python-scientific variant; private) and water-data-engine's pyproject.toml.
 # The record pixi-build writes comes from [project.dependencies] and requires-python;
 # tests/test_package_section.py reads it from pixi.lock.
 [tool.pixi.package]
-name = "hydrologic-toolbox-data-retrieval-cli"
+name = "hydrotoolbox-dataretrieval"
 # The last release, bumped beside CHANGELOG.md in each release PR. It is the conda record's
 # version only; __version__ still comes from hatch-vcs.
 version = "0.1.0"
@@ -161,8 +161,8 @@ pyinstaller = "*"
 # pixi rebuilds the source package, and with it the generated _version.py, only when the
 # manifest changes, not when HEAD moves. Reinstalling just the project package makes
 # hatch-vcs re-read git, so the exe never embeds a stale version.
-refresh-version = "pixi reinstall --locked -e build hydrologic-toolbox-data-retrieval-cli"
-build-exe = { cmd = "pyinstaller --noconfirm --clean hydrologic_toolbox_data_retrieval_cli.spec", depends-on = ["refresh-version"] }
+refresh-version = "pixi reinstall --locked -e build hydrotoolbox-dataretrieval"
+build-exe = { cmd = "pyinstaller --noconfirm --clean hydrotoolbox_dataretrieval.spec", depends-on = ["refresh-version"] }
 
 [tool.pixi.environments]
 default = { features = ["core", "dev", "jupyter"], solve-group = "default" }
@@ -182,7 +182,7 @@ test-live = "pytest -m live"
 lint = "ruff check"
 format = "ruff format"
 typecheck = "pyrefly check"
-cli = "python -m hydrologic_toolbox_data_retrieval_cli"
+cli = "python -m hydrotoolbox_dataretrieval"
 
 # ---------------------------------------------------------------------------
 # Tooling
@@ -218,5 +218,5 @@ select = [
 ignore = ["SIM105", "SIM117"]
 
 [tool.pyrefly]
-project-includes = ["src/hydrologic_toolbox_data_retrieval_cli"]
+project-includes = ["src/hydrotoolbox_dataretrieval"]
 python-version = "3.12"

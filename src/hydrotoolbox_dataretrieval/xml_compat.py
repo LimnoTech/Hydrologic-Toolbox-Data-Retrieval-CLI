@@ -7,11 +7,11 @@ from xml.etree import ElementTree
 
 from pyproj import CRS, Transformer
 
-from hydrologic_toolbox_data_retrieval_cli.config import DEMO_CONFIG
-from hydrologic_toolbox_data_retrieval_cli.station_discovery import (
+from hydrotoolbox_dataretrieval.config import DEMO_CONFIG
+from hydrotoolbox_dataretrieval.station_discovery import (
     run_create_new_project_section,
 )
-from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
+from hydrotoolbox_dataretrieval.timeseries import get_usgs_timeseries
 
 _SUPPORTED_DISCOVERY_FUNCTION = "GetNWISStations"
 _SUPPORTED_DISCOVERY_DATATYPES = {"discharge", "gw_daily", "gw_periodic"}

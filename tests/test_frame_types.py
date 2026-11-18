@@ -11,7 +11,7 @@ def _is_category(series):
 
 def test_categorize_existing_columns_converts_only_requested_existing_columns():
     """Only named columns present on the frame should become categorical."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+    from hydrotoolbox_dataretrieval.frame_types import (
         categorize_existing_columns,
     )
 
@@ -35,7 +35,7 @@ def test_categorize_existing_columns_converts_only_requested_existing_columns():
 
 def test_categorize_existing_columns_preserves_already_categorical_columns():
     """The helper should not disturb columns that are already categorical."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+    from hydrotoolbox_dataretrieval.frame_types import (
         categorize_existing_columns,
     )
 
@@ -56,7 +56,7 @@ def test_categorize_existing_columns_preserves_already_categorical_columns():
 
 def test_categorize_existing_columns_skips_unhashable_list_values():
     """List-valued API fields cannot be categorical values and should be left alone."""
-    from hydrologic_toolbox_data_retrieval_cli.frame_types import (
+    from hydrotoolbox_dataretrieval.frame_types import (
         categorize_existing_columns,
     )
 
@@ -79,7 +79,7 @@ def test_categorize_existing_columns_skips_unhashable_list_values():
 
 def test_get_usgs_timeseries_returns_categorical_repeated_columns(tmp_path):
     """Time-series payloads should categorize repeated codes before export/return."""
-    from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
+    from hydrotoolbox_dataretrieval.timeseries import get_usgs_timeseries
 
     class FakeWaterdata:
         @staticmethod
@@ -150,7 +150,7 @@ def test_get_usgs_timeseries_returns_categorical_repeated_columns(tmp_path):
 
 def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
     """Daily responses can hold list-valued qualifiers; do not categorize them."""
-    from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
+    from hydrotoolbox_dataretrieval.timeseries import get_usgs_timeseries
 
     class FakeWaterdata:
         @staticmethod
@@ -217,7 +217,7 @@ def test_get_usgs_timeseries_preserves_list_qualifiers(tmp_path):
 
 def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
     """The download layer reports request, response, metadata, and export steps."""
-    from hydrologic_toolbox_data_retrieval_cli.timeseries import get_usgs_timeseries
+    from hydrotoolbox_dataretrieval.timeseries import get_usgs_timeseries
 
     messages = []
 
@@ -294,7 +294,7 @@ def test_get_usgs_timeseries_emits_debug_messages(tmp_path):
 
 def test_normalize_station_frame_returns_categorical_station_columns(monkeypatch):
     """Station discovery should categorize repeated station metadata before export."""
-    from hydrologic_toolbox_data_retrieval_cli import station_discovery
+    from hydrotoolbox_dataretrieval import station_discovery
 
     candidate_frame = pd.DataFrame(
         {
