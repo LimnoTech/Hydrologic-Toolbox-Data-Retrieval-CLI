@@ -1,6 +1,6 @@
 """Hold the package section to its one dependency list.
 
-hydrologic-toolbox-data-retrieval-cli is a pixi-build source package,
+hydrotoolbox-dataretrieval is a pixi-build source package,
 following LimnoTech's packaging guide (python-scientific variant; private)
 and adapted from GLM_modeling's test of the same name. The runtime
 dependencies are ``[project.dependencies]``, in PyPI names, and nothing
@@ -135,7 +135,7 @@ def test_requirement_specifier_drops_the_name_and_spaces():
 def test_the_package_is_the_project(pyproject):
     """The conda package and the wheel share one name."""
     assert package(pyproject)["name"] == pyproject["project"]["name"]
-    assert package(pyproject)["name"] == "hydrologic-toolbox-data-retrieval-cli"
+    assert package(pyproject)["name"] == "hydrotoolbox-dataretrieval"
 
 
 def test_the_mapping_is_on(pyproject):
@@ -223,7 +223,7 @@ def test_pypi_only_names_are_not_in_the_record(pyproject, lock):
 def test_the_package_consumes_itself(pyproject):
     """Every environment installs the package through its record, not
     as a PyPI editable install."""
-    name = "hydrologic-toolbox-data-retrieval-cli"
+    name = "hydrotoolbox-dataretrieval"
     assert pyproject["tool"]["pixi"]["dependencies"][name] == {"path": "."}
     assert name not in pyproject["tool"]["pixi"].get("pypi-dependencies", {})
 
@@ -458,8 +458,6 @@ def test_ci_rebuilds_the_source_package(pyproject, lock, workflow):
             assert args is not None, f"{after.get('name')}: {run}"
             assert args[:4] == ["pixi", "reinstall", "-e", env], args
             assert set(args[4:]) == lock_source_packages(lock, env), args
-            assert lock_source_packages(lock, env) == {
-                "hydrologic-toolbox-data-retrieval-cli"
-            }
+            assert lock_source_packages(lock, env) == {"hydrotoolbox-dataretrieval"}
             checked += 1
     assert checked == 3

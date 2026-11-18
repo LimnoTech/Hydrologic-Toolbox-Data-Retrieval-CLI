@@ -8,13 +8,13 @@ import sys
 
 import pytest
 
-import hydrologic_toolbox_data_retrieval_cli as package
+import hydrotoolbox_dataretrieval as package
 
 
 def test_version_flag_prints_package_version():
     """``--version`` prints exactly the package version and a newline."""
     result = subprocess.run(
-        [sys.executable, "-m", "hydrologic_toolbox_data_retrieval_cli", "--version"],
+        [sys.executable, "-m", "hydrotoolbox_dataretrieval", "--version"],
         capture_output=True,
         text=True,
     )
@@ -33,9 +33,7 @@ def package_without_version_module(monkeypatch):
     try:
         with monkeypatch.context() as patch:
             # A None entry in sys.modules makes `import ..._version` raise ImportError.
-            patch.setitem(
-                sys.modules, "hydrologic_toolbox_data_retrieval_cli._version", None
-            )
+            patch.setitem(sys.modules, "hydrotoolbox_dataretrieval._version", None)
             yield importlib.reload(package)
     finally:
         importlib.reload(package)
